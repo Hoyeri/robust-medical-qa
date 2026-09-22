@@ -1,55 +1,69 @@
-# 3. 귀속 정보는 attention 전달 뒤에도 읽히는가?
+# Transmission audit
 
-## 목적
+## Question
 
-소견 표현에 귀속 정보가 있어도 value 사영이나 attention 전달 과정에서 잃을 수 있습니다. H → V → 소견의 attention 기여 → 출력 변환 후 기여에서 같은 M/H1 분류를 수행해 이 가능성을 검사했습니다. 판독 가능성과 진단 점수에 대한 영향은 구분했습니다.
+Does patient/third-party attribution remain decodable after value projection, attention weighting, and output projection?
 
-전체 실행에는 변형이 존재하는 118문항을 사용했지만 M/H1 비교는 **53쌍**입니다. M/U는 118, G+/U는 70입니다. 동일한 빈 rationale의 rs 답 슬롯을 사용하며 자연생성 정확도 실험이 아닙니다.
+We applied M/H1 classifiers to four representations along this sequence. The extraction run covered 118 questions with available variants. Pairwise sample sizes were 53 for M/H1, 118 for M/U, and 70 for G+/U. The readout used the fixed `rs` answer slot with an empty rationale.
 
-## 분류기 입력
+## Representations
 
-한 query head의 소견→답 기여는 `C^(h) = sum_{j in finding} A[answer,j,h] * V[j,kv(h)]`입니다. QK softmax는 허용된 전체 토큰을 대상으로 계산하고, 그중 소견 source의 기여만 합산합니다.
+For query head h, the finding's contribution to the answer position is:
 
-| 입력 | 실제 저장값 | 차원 |
+```text
+C^(h)_{finding→answer} = sum_{j in finding} A[answer,j,h] * V[j,kv(h)]
+C_{finding→answer} = Concat(C^(1), ..., C^(32))
+```
+
+Attention is normalized over all allowed source tokens. The sum above selects contributions from the finding tokens.
+
+| Classifier input | Representation | Dimensions |
 |---|---|---:|
-| H 평균 | 소견 토큰의 hidden state 평균 | 4096 |
-| V 평균 | 소견 토큰의 value 평균, 8 KV head concat | 1024 |
-| Concat(C^(1),…,C^(32)) | head별 attention 가중 소견 기여 concat | 4096 |
-| Concat(C^(1),…,C^(32)) W_O | 답 위치 residual에 더해지는 소견 기여 | 4096 |
+| H mean | Mean hidden state of finding tokens | 4096 |
+| V mean | Mean value vectors of finding tokens, concatenated over 8 KV heads | 1024 |
+| C_{finding→answer} | Concatenated attention-weighted contributions from 32 query heads | 4096 |
+| C_{finding→answer} W_O | Finding contribution added to the answer-position residual | 4096 |
 
-각 입력, 층에 별도의 표준화→PCA24→L2 로지스틱 분류기를 적합했습니다. GQA에서 query head 32개는 KV head 8개를 공유합니다.
+Grouped-query attention shares 8 KV heads across 32 query heads. A separate standardization → PCA24 → L2 logistic classifier was fitted for each representation and index.
 
-## 역할 분류 결과와 집계 규칙
+## Attribution decoding
 
-| 표현 | 원 보고서의 최저 holdout 정확도 평균 |
+| Representation | Mean minimum holdout accuracy |
 |---|---:|
 | H | 0.94 |
 | V | 0.95 |
-| Concat(C) | 0.89 |
-| Concat(C) W_O | 0.83 |
+| C_{finding→answer} | 0.89 |
+| C_{finding→answer} W_O | 0.83 |
 
-이 값들은 원 출력의 소수 둘째 자리 반올림값입니다. 정확한 새 자릿수를 추정하지 않았습니다.
+Values retain the original output's two-decimal precision. At each of indices **8, 10, 12, 14, 16**, the analysis selected the minimum of concept-holdout accuracy, coworker→other-template accuracy, and other-template→coworker accuracy. The table reports the mean of those five minima. Question-level cross-validation and shuffled-label controls were reported separately.
 
-**실제 코드의 집계:** index **8,10,12,14,16** 다섯 지점 각각에서 `min(개념 holdout, 동료→나머지, 나머지→동료)`를 취하고 다섯 값을 평균했습니다. 8–16의 아홉 층 전부 평균이 아닙니다. seed 최솟값, CI 하한도 아닙니다. 모든 지점에서 0.83 이상이라는 뜻도 아닙니다. by-item 정확도와 shuffled-label 대조는 이 최솟값에 포함되지 않습니다.
+H[l] is the input to block l, while V/C/CW_O[l] describe computations inside block l. H[32] is the final normalized hidden state.
 
-**층 표기:** H 배열의 index l은 block l의 입력(즉 l>0이면 앞 block 출력)입니다. V/C/CW_O의 index l은 실제 block l 연산입니다. H index 8을 block 8의 출력이라고 표시하지 않습니다. 마지막 H index32만 최종 norm 이후입니다.
+The transmission probe used clipping of standardized values and an unweighted mean of fold accuracies. The earlier hidden-state probe used its original preprocessing and pooled correct counts across folds.
 
-기존 hidden-state probe와 transmission의 전처리 구현 및 CV 집계도 완전히 동일하지 않습니다. transmission은 표준화값 clipping과 fold 정확도 단순 평균 등을 사용합니다. H 100%→94%를 정보 손실량으로 해석하지 않습니다.
+## Diagnostic-score sensitivity
 
-## 진단 점수 민감도
+We defined `q = logit(T) - logit(G)` and computed `A_e = dq/dα`, the first-order sensitivity to scaling a source's contribution across downstream receivers.
 
-`q = logit(T) - logit(G)`로 두고 source 기여에 작은 배율 변화를 주었을 때 `dq/dα`를 계산했습니다. 여기의 민감도 A_e는 attention weight A와 다른 변수입니다. 전체 downstream receiver에 대한 기여의 1차 민감도 차이:
+| Source extent | Median M−H1 sensitivity | 95% CI |
+|---|---:|---|
+| Full sentence | +0.18 | [−0.19, +0.36] |
+| Shared finding phrase | +0.01 | [−0.04, +0.12] |
 
-- 문장 전체 source: M−H1 중앙값 +0.18, 95% CI [−0.19,+0.36]
-- 공통 소견 source: +0.01 [−0.04,+0.12]
+The corrected answer-slot comparison on the same 53 pairs gave:
 
-역할 정보가 전달된 벡터에서도 읽히지만, 이 aggregate 민감도에서 일관된 역할 차이는 확인되지 않았습니다. 동등성 검정이 아니므로 역할을 전혀 사용하지 않는다거나 모든 head가 같은 역할을 한다고 결론짓지 않습니다. 원 보고서 §18.4의 동일53문항 정정 역시 유지합니다: q(M)−q(H1) 중앙값 0 [−0.125,+0.125], 평균 +0.245 [−0.075,+0.649].
+| q(M)−q(H1) | Estimate | 95% CI |
+|---|---:|---|
+| Median | 0.000 | [−0.125, +0.125] |
+| Mean | +0.245 | [−0.075, +0.649] |
 
-## 코드, 증거
+Attribution remained decodable in the transmitted vectors. Confidence intervals for aggregate sensitivity and answer-score differences included zero.
 
-- [실제 추출, 미분 코드](../reference/transmission/transmission_audit_v5.py)
-- [실제 분석, 집계 코드](../reference/transmission/analyze_transmission.py)
-- [원 출력의 단계별 분류 표](../results/transmission_decodability_original.txt)
-- [민감도와 판독 차이 요약](../results/transmission_summary.json)
+## Code and results
 
-원 코드와 출력의 해석을 위 범위로 제한합니다. 이 레포 정리에서 새로운 value intervention을 실행하지 않았습니다.
+- [Extraction and differentiation](../reference/transmission/transmission_audit_v5.py)
+- [Probe and aggregation](../reference/transmission/analyze_transmission.py)
+- [Original decoding output](../results/transmission_decodability_original.txt)
+- [Sensitivity and answer-score summary](../results/transmission_summary.json)
+
+The same-pair answer-score values follow the correction in section 18.4 of the original report, recorded in the source manifest.

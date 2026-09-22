@@ -1,43 +1,49 @@
-# 2. 같은 소견의 환자/제3자 귀속 표현
+# Attribution probe
 
-## 질문과 입력
+## Inputs
 
-MedQA 기반 53개 원문 문항마다 동일한 소견을 환자(M; 저장명 Ma) 또는 제3자(H1)에게 귀속했습니다. 총 106개 입력이며 독립 문항은 53개입니다. 소견 concept은 35개입니다. M/H1은 같은 T 유도 소견의 귀속 비교이지 정답 지지 소견과 오답 지지 소견의 비교가 아닙니다.
+For each of 53 MedQA-based questions, the same T-supporting finding was attributed either to the patient (M, stored as Ma) or to a third party (H1). This produced 106 inputs across 53 independent questions and 35 finding concepts.
 
-전체 입력을 처리한 후 두 위치를 읽었습니다.
+We extracted two 4096-dimensional representations from the frozen model:
 
-1. `phrase`: 공통 소견 구절의 토큰별 hidden state 평균, 4096차원
-2. `answer`: 답 예측 직전 마지막 입력 토큰의 hidden state, 4096차원
+| Position | Representation |
+|---|---|
+| `phrase` | Mean hidden state of tokens in the clinical phrase shared by M and H1 |
+| `answer` | Hidden state of the final input token immediately before answer prediction |
 
-두 번째는 소견 토큰 평균이 아닙니다. 이 실험의 답 슬롯은 빈 rationale의 고정 JSON answer prefix(`rs`) 뒤이며, 자연생성한 설명 끝의 답 위치가 아닙니다. 가중치는 수정하지 않았습니다.
+The answer position used a fixed JSON answer prefix with an empty rationale (`rs`).
 
-## 분류와 집계
+## Classifier
 
-표준화 → PCA 24차원 → L2 로지스틱 회귀. 위치, 층, fold마다 별도 분류기를 학습합니다. 5-fold 분할은 원문 문항 단위이며 M/H1은 같은 fold에 둡니다. 전처리도 train fold에서만 적합합니다. seed 0/1/2를 사용합니다.
+Standardization → PCA with 24 components → L2 logistic regression.
 
-한 seed에서 5개 test fold의 정답 개수를 합쳐 106으로 나눈 뒤, 3개 seed 정확도를 평균합니다. 여러 분류기의 가중치를 합치는 것이 아닙니다. 318회 반복 예측은 318개의 독립 사례가 아닙니다.
+A separate classifier was fitted for each position, hidden-state index, and training fold. Five-fold cross-validation was grouped by original question, keeping each M/H1 pair in the same fold. Standardization and PCA were fitted on the training fold. Seeds were 0, 1, and 2.
 
-## 정확한 재계산 결과
+For each seed, correct predictions across the five test folds were summed and divided by 106. The reported accuracy is the mean across three seeds, representing 318 repeated predictions on 53 independent questions.
 
-| 위치 | hidden-state index | 0-based block 해석 | seed별 정답 /106 | 평균 정확도 |
+## Results
+
+| Position | Hidden-state index | Block interpretation, zero-based | Correct /106 by seed | Mean accuracy |
 |---|---:|---|---|---:|
-| 소견 | 0 | 입력 임베딩 | 53,53,53 | 50% |
-| 소견 | 8 | block 7 출력 | 106,106,106 | 100% |
-| 소견 | 9 | block 8 출력 | 106,106,105 | 99.6855% |
-| 소견 | 10–16 각각 | block 9–15 출력 | 106,106,106 | 100% |
-| 답 | 12 | block 11 출력 | 82,85,83 | 78.6164% |
-| 답 | 32 | block 31 이후 최종 norm | 54,59,58 | 53.7736% |
+| Finding | 0 | Input embedding | 53, 53, 53 | 50% |
+| Finding | 8 | Block 7 output | 106, 106, 106 | 100% |
+| Finding | 9 | Block 8 output | 106, 106, 105 | 99.6855% |
+| Finding | 10–16, each | Block 9–15 output | 106, 106, 106 | 100% |
+| Answer | 12 | Block 11 output | 82, 85, 83 | 78.6164% |
+| Answer | 32 | Final normalization after block 31 | 54, 59, 58 | 53.7736% |
 
-원래 출력의 `1.00` 반올림은 9번 index의 99.6855%를 가렸습니다. 이 표는 저장된 activation을 원 분류 함수로 다시 계산한 **2026-09-22 로컬 CPU 재분석**이며 새 GPU 실험이 아닙니다. 원본 수치와 결과는 덮어쓰지 않았습니다.
+These counts were recomputed on CPU from saved activations on 2026-09-22 using the original classifier operations. The original two-decimal output rounded the index-9 accuracy to `1.00`.
 
-## 추가 holdout과 한계
+Patient/third-party attribution was linearly decodable from the finding representations. Answer-position decoding accuracy was higher at index 12 than at index 32.
 
-- 개념 holdout: 같은 HPO concept가 train/test에 함께 들어가지 않도록 분할.
-- 문구 holdout: 동료 39문항 ↔ 나머지 14문항(급우 5, 다른 아이 5, 다른 아기 4).
-- 관계 표현은 원문 연령에 맞춰 생성했으므로 문구 전이에는 성인/소아 문항 차이도 포함됩니다. 동일 문항에서 관계 표현만 바꾼 실험이 아닙니다.
-- 가족력, 감염 접촉력처럼 유효한 제3자 정보에 대한 일반화는 이 분석에서 검증하지 않았습니다.
-- 이 holdout들은 위 표의 문항별 교차검증과 별도 평가입니다. transmission의 min-holdout 값과 섞어 비교하지 않습니다.
+## Additional holdouts
 
-**결론:** 이 표본과 probe에서 귀속 정보가 선형적으로 읽힙니다. 진단 활용, 일반 근거 타당성 판별, 마지막층의 정보 완전 소실을 입증하지 않습니다.
+- Concept holdout: training and evaluation used disjoint HPO concepts.
+- Template holdout: coworker questions (39) were evaluated against the remaining templates (14: classmate 5, another child 5, another baby 4), in both training directions.
+- Templates followed the patient's age in the source question, so template transfer also involved adult/pediatric question differences.
 
-[추출 코드](../reference/role/extract_hidden_v5.py) / [원 probe](../reference/role/probe_contextual_role.py) / [holdout 코드](../reference/role/probe_robustness.py) / [정확한 정답 개수](../results/role_probe_exact.json)
+These holdouts were evaluated separately from the question-level cross-validation table above. Related holdout analyses are described in the [transmission audit](03_transmission.md).
+
+## Code and results
+
+[Extraction](../reference/role/extract_hidden_v5.py) / [Original probe](../reference/role/probe_contextual_role.py) / [Holdout analysis](../reference/role/probe_robustness.py) / [Exact counts](../results/role_probe_exact.json)
