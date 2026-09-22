@@ -27,9 +27,7 @@ def analyze(directory, items, config):
                                 templates=templates, shuffled=shuffled, minimum_holdout=minimum))
         require(set(config['summary_indices']) <= set(minima), 'Missing summary index')
         mean = sum(minima[i] for i in config['summary_indices']) / len(config['summary_indices'])
-        bounds = config['verdict_thresholds']
-        verdict = 'retained' if mean >= bounds['retained'] else 'lost' if mean <= bounds['lost'] else 'partial'
-        summaries[stage] = {'mean_minimum_holdout': mean, 'verdict': verdict, 'indices': config['summary_indices']}
+        summaries[stage] = {'mean_minimum_holdout': mean, 'indices': config['summary_indices']}
     alignment = read_json(Path(directory) / 'alignment.json')
     bootstrap = config['bootstrap']
     sensitivity = []

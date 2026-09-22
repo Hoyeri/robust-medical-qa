@@ -16,9 +16,9 @@ The clinical control was selected by an ID hash from the original question's non
 
 ## Sample selection
 
-Of 304 frozen exploratory questions, 302 supported the existing fixed-prefix evaluation. We sorted these by `sha256('e08-natural-v1:'+question_id)` and selected the first 96. Selection depended on question IDs, independently of model outcomes.
+The source pool contained 304 Bystander exploratory questions; 302 supported the existing fixed-prefix evaluation. We ranked those IDs by SHA-256 with a fixed salt and selected the first 96, independently of model outcomes. The exact historical salt and selection function are preserved in [the selection code](../reference/attention/generation_routes.py).
 
-The sample size was set within the experiment's time budget. E08 generated 288 responses across three conditions; E11 generated 192 responses across two control conditions on the same questions. Three E11 baseline smoke runs were recorded separately. The E08 execution loop took approximately 35.4 minutes.
+The sample size was set within the experiment's time budget. Baseline and the two distractor-blocking conditions generated 288 responses; the two clinical-control conditions generated 192 responses on the same questions. Three clinical-control baseline smoke runs were recorded separately. The baseline/distractor generation loop took approximately 35.4 minutes.
 
 ## Free-generation results
 
@@ -42,9 +42,7 @@ With oracle source locations, distractor blocking recovered more correct answers
 
 ## Code and results
 
-Current entry points and commands: [Reproducibility](REPRODUCIBILITY.md). The original implementations below are retained as references.
-
-- [E08 generation](../reference/attention/run_e08.py) / [E11 clinical control](../reference/attention/run_e11.py)
-- [Attention blocking](../reference/attention/receiver_knockout.py) / [Source selection](../reference/attention/source_spans.py)
+- [Current experiment](../experiments/attention_blocking.py) / [Input converter](../experiments/prepare_attention.py) / [Configuration](../configs/attention_blocking.json)
 - [Per-question outcomes](../results/attention_outcomes.csv) / [Aggregated counts](../results/attention_summary.json)
-- Source protocols: `0909_mechanistic_discovery/experiments/E08_NATURAL_GENERATION_V1_KO.md` and `E11_NATURAL_SOURCE_CONTROL_V1_KO.md`. Source hashes are recorded in `provenance/sources.json`.
+- [Run instructions](REPRODUCIBILITY.md)
+- Historical implementations: [Distractor blocking](../reference/attention/run_distractor_blocking.py) / [Clinical control](../reference/attention/run_clinical_control.py)

@@ -4,9 +4,9 @@
 
 | Experiment | Reference used in the experiment design | Method used here |
 |---|---|---|
-| Source/receiver attention knockout, E05/E06, extended to free generation in E08/E11 | [Geva et al., Dissecting Recall of Factual Associations in Auto-Regressive Language Models (EMNLP 2023), Section 5, Eq. 7](https://aclanthology.org/2023.emnlp-main.751/) | Set selected pre-softmax attention scores to negative infinity. Apply the operator to input-option or downstream receiver sets, with distractor and matched clinical sources. |
-| Initial distractor-source knockout, E03 | [Cheng et al., Stochastic Chameleons: Irrelevant Context Hallucinations Reveal Class-Based (Mis)Generalization in LLMs (ACL 2025), Section 6.3 and Appendix H](https://aclanthology.org/2025.acl-long.1458/) | Block attention to a context source and measure the resulting change in the predicted answer. This was the starting reference for the source-flow experiments. |
-| Fixed-rationale versus regenerated-rationale evaluation, E08 | [Lanham et al., Measuring Faithfulness in Chain-of-Thought Reasoning (2023)](https://arxiv.org/abs/2307.13702) | Evaluation-design reference for examining answer behavior after intervening on the reasoning process. E08 regenerates the rationale and answer while attention blocking is active. |
+| Source/receiver attention knockout during generation | [Geva et al., Dissecting Recall of Factual Associations in Auto-Regressive Language Models (EMNLP 2023), Section 5, Eq. 7](https://aclanthology.org/2023.emnlp-main.751/) | Set selected pre-softmax attention scores to negative infinity. Apply the operator to input-option or downstream receiver sets, with distractor and matched clinical sources. |
+| Distractor-source knockout | [Cheng et al., Stochastic Chameleons: Irrelevant Context Hallucinations Reveal Class-Based (Mis)Generalization in LLMs (ACL 2025), Section 6.3 and Appendix H](https://aclanthology.org/2025.acl-long.1458/) | Block attention to a context source and measure the resulting change in the predicted answer. This was the starting reference for the source-flow experiments. |
+| Fixed-rationale versus regenerated-rationale evaluation | [Lanham et al., Measuring Faithfulness in Chain-of-Thought Reasoning (2023)](https://arxiv.org/abs/2307.13702) | Evaluation-design reference for examining answer behavior after intervening on the reasoning process. The generation experiment regenerates the rationale and answer while attention blocking is active. |
 
 ## Attribution probe and transmission audit
 

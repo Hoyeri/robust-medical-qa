@@ -28,6 +28,8 @@ Grouped-query attention shares 8 KV heads across 32 query heads. A separate stan
 
 ## Attribution decoding
 
+This table summarizes concept/template generalization. The earlier attribution table reports question-grouped cross-validation, so its near-100% values and the H value below use different evaluation summaries.
+
 | Representation | Mean minimum holdout accuracy |
 |---|---:|
 | H | 0.94 |
@@ -35,7 +37,7 @@ Grouped-query attention shares 8 KV heads across 32 query heads. A separate stan
 | C_{finding→answer} | 0.89 |
 | C_{finding→answer} W_O | 0.83 |
 
-Values retain the original output's two-decimal precision. At each of indices **8, 10, 12, 14, 16**, the analysis selected the minimum of concept-holdout accuracy, coworker→other-template accuracy, and other-template→coworker accuracy. The table reports the mean of those five minima. Question-level cross-validation and shuffled-label controls were reported separately.
+Values retain the original output's two-decimal precision. At each of indices **8, 10, 12, 14, 16**, the analysis selected the minimum of concept-holdout accuracy, coworker→other-template accuracy, and other-template→coworker accuracy. The table reports the mean of those five minima. For example, the original rounded H scores at index 8 are 0.99, 0.86, and 0.99; their minimum is 0.86. The summary averages five such minima using unrounded scores. Question-level cross-validation and shuffled-label controls are available in the [full decoding output](../results/transmission_decodability_original.txt).
 
 H[l] is the input to block l, while V/C/CW_O[l] describe computations inside block l. H[32] is the final normalized hidden state.
 
@@ -43,7 +45,11 @@ The transmission probe used clipping of standardized values and an unweighted me
 
 ## Diagnostic-score sensitivity
 
-We defined `q = logit(T) - logit(G)` and computed `A_e = dq/dα`, the first-order sensitivity to scaling a source's contribution across downstream receivers.
+We defined `q = logit(T) - logit(G)`. For a source e, the perturbation adds `α C_e W_O` to the attention output at each downstream non-source receiver. Thus α = 0 is baseline and α = 0.1 adds 10% of the baseline source contribution. This is an additive contribution intervention with the baseline contribution held fixed.
+
+For each block, the gradient gives `A_e = dq/dα` at α = 0. The results below sum block sensitivities over zero-based blocks 8–16, then compute each question's M−H1 difference and the median across 53 pairs. This measures the local derivative for simultaneous perturbations across those blocks. The source extent is either the full added sentence or the shared finding phrase. Bootstrap resampling uses questions as the unit.
+
+The decoding vectors above use only the answer receiver; this sensitivity table uses all downstream non-source receivers. Both are evaluated with the fixed empty-rationale answer prefix.
 
 | Source extent | Median M−H1 sensitivity | 95% CI |
 |---|---:|---|
@@ -61,11 +67,10 @@ Attribution remained decodable in the transmitted vectors. Confidence intervals 
 
 ## Code and results
 
-Current entry points and commands: [Reproducibility](REPRODUCIBILITY.md). The original implementations below are retained as references.
+- [Current extraction](../experiments/extract_representations.py) / [Current analysis](../experiments/transmission_audit.py)
+- [Extraction settings](../configs/transmission_extraction.json) / [Analysis settings](../configs/transmission_analysis.json)
+- [Original decoding output](../results/transmission_decodability_original.txt) / [Sensitivity and answer-score summary](../results/transmission_summary.json)
+- [Run instructions](REPRODUCIBILITY.md)
+- Historical implementations: [Extraction](../reference/transmission/transmission_audit_v5.py) / [Analysis](../reference/transmission/analyze_transmission.py)
 
-- [Extraction and differentiation](../reference/transmission/transmission_audit_v5.py)
-- [Probe and aggregation](../reference/transmission/analyze_transmission.py)
-- [Original decoding output](../results/transmission_decodability_original.txt)
-- [Sensitivity and answer-score summary](../results/transmission_summary.json)
-
-The same-pair answer-score values follow the correction in section 18.4 of the original report, recorded in the source manifest.
+The tables retain the original reported values. The refactor's bootstrap recalculation gave mean q(M)−q(H1) = 0.245283 with CI [−0.077830, +0.639151]; the point estimate matches, while the resampled interval differs slightly. The bootstrap settings and recomputed values are recorded in [validation results](../provenance/refactor_validation.json).

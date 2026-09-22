@@ -91,10 +91,6 @@
     "repeats": 5000,
     "seed": 20260921
   },
-  "verdict_thresholds": {
-    "retained": 0.85,
-    "lost": 0.6
-  },
   "contrasts": [
     [
       "Ma",

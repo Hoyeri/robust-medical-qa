@@ -2,7 +2,7 @@
 import argparse,json,time
 from run_e01 import ROOT,SOURCE,DEADLINE,LABELS,data,require,digest,atomic,token_digest
 from discovery_runtime import execution_guard,FrozenRuntime,utcnow
-from run_e08 import PAYLOAD as E08_PAYLOAD,OUTPUT as E08_OUTPUT,CODE as E08_CODE,CONFIG,REUSE
+from run_distractor_blocking import PAYLOAD as E08_PAYLOAD,OUTPUT as E08_OUTPUT,CODE as E08_CODE,CONFIG,REUSE
 from run_e05 import PAYLOAD as E05_PAYLOAD,OUTPUT as E05_OUTPUT
 from receiver_knockout import receiver_edges,toy_tests
 from generation_routes import generation_queries

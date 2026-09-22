@@ -6,13 +6,15 @@
       "source": "0909_mechanistic_discovery/scripts/run_e08.py",
       "sha256": "30e6f8bd4438a264b049172d30262d458d25a43b04dde9bc59bab1d90f6f14b8",
       "purpose": "Original attention implementation excerpt",
-      "included_copy": "reference/attention/run_e08.py"
+      "included_copy": "reference/attention/run_distractor_blocking.py"
     },
     {
       "source": "0909_mechanistic_discovery/scripts/run_e11.py",
       "sha256": "41936489daf543683ce031ab3d6acbcbee321ad65997b905a8d58d3ad3e33aae",
       "purpose": "Original attention implementation excerpt",
-      "included_copy": "reference/attention/run_e11.py"
+      "included_copy": "reference/attention/run_clinical_control.py",
+      "included_sha256": "fcf4fed852d38f019e988cddd6fe0d756102411760512e4e52f1ad037e9715ec",
+      "formatting_note": "Import updated to the descriptive snapshot filename; computation unchanged."
     },
     {
       "source": "0909_mechanistic_discovery/scripts/receiver_knockout.py",
@@ -160,6 +162,26 @@
       "source": "0916/CM_PAPER_POSITION_20260920_KO.md",
       "sha256": "b389f32dd41465e12a157a8d2d69ca48d911e09ee143a6f51993b2fef92deffa",
       "purpose": "Experiment design record establishing method references or study-specific analysis design"
+    },
+    {
+      "source": "0916/litgate_v1/build_confirmatory_items.py",
+      "sha256": "7c373b89da91736d6b939ac19927fa116de2b0a1110b51e9ca81d6c2183d6d73",
+      "purpose": "Sample construction and attribution eligibility evidence"
+    },
+    {
+      "source": "0916/cm_tierB_hpo_v1/hpo_candidates.py",
+      "sha256": "9df3f5ea49c17049c2595ae3cb0aa0049672a37de27fa899d10e960c0dc01e98",
+      "purpose": "Sample construction and attribution eligibility evidence"
+    },
+    {
+      "source": "0916/cm_tierB_hpo_v1/items/cm_confirmatory_v5_SUMMARY.json",
+      "sha256": "0586b37784c2edf3dd94eb12e6fcdeee50b01d4a7eebb1ff85ae3fa822953ba2",
+      "purpose": "Sample construction and attribution eligibility evidence"
+    },
+    {
+      "source": "0916/litgate_v1/make_v5_selection.py",
+      "sha256": "b8db6d010cea6a8c2b93bf9110bca9ef7e195f87ea3abbda50eb39de05226d3a",
+      "purpose": "Sample construction and attribution eligibility evidence"
     }
   ]
 }

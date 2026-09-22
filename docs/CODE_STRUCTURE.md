@@ -17,7 +17,7 @@ Experiments call reusable components in `robust_medical_qa/`. JSON configuration
 ## Experiment entry points
 
 - `experiments.attention_blocking`: source/receiver interventions using prepared token inputs
-- `experiments.prepare_attention`: convert E08/E11 input payloads into one portable manifest
+- `experiments.prepare_attention`: convert distractor and clinical-control input payloads into one portable manifest
 - `experiments.extract_representations`: hidden-state or transmission extraction
 - `experiments.attribution_probe`: question-level probes and optional concept/template holdouts
 - `experiments.transmission_audit`: transmission probes, paired sensitivities, answer-score comparisons

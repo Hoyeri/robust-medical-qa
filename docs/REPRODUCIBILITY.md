@@ -2,6 +2,18 @@
 
 Run commands from the repository root. CPU probing requires Python 3.9+ and NumPy. Model execution uses PyTorch and Transformers 4.57.3.
 
+## Required inputs
+
+| Task | Inputs | Included here? |
+|---|---|---|
+| Verify counts and files | Outcome CSV, summaries, manifests | Yes |
+| Recompute attribution probes | `Ma.npz`, `H1.npz`; item metadata for holdouts | External arrays; one input example included |
+| Recompute transmission analysis | Transmission NPZs, `alignment.json`, item metadata | External |
+| Extract model representations | Input JSONL, local model/tokenizer | One example JSONL; model external |
+| Rerun attention blocking | Tokenized attention input manifest, local model/tokenizer | External |
+
+The original inputs and activations are in the author's research workspace. Collaborators need a separate transfer from the repository owner; this repository does not have an artifact download endpoint. Source paths and hashes are in `provenance/sources.json`. See [Example inputs](../examples/README.md) for schema details.
+
 ## Install
 
 ```bash
@@ -80,12 +92,12 @@ The analysis accepts original transmission artifacts as well as newly extracted 
 
 ## Run attention blocking
 
-Convert the original E08/E11 prepared inputs once:
+Convert the original distractor and clinical-control prepared inputs once:
 
 ```bash
 python3 -m experiments.prepare_attention \
-  --e08 /path/to/e08_natural_generation_v1.json \
-  --e11 /path/to/e11_natural_source_control_v1.json \
+  --distractor-input /path/to/distractor_generation.json \
+  --clinical-control-input /path/to/clinical_control.json \
   --output /tmp/attention_inputs.json
 
 python3 -m experiments.attention_blocking \

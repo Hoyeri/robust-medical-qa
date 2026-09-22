@@ -2,7 +2,7 @@
 
 ## Inputs
 
-For each of 53 MedQA-based questions, the same T-supporting finding was attributed either to the patient (M, stored as Ma) or to a third party (H1). This produced 106 inputs across 53 independent questions and 35 finding concepts.
+For each of 53 MedQA-based questions, the same finding selected to support competing answer T was attributed either to the patient (M, stored as Ma) or to a third party (H1). This produced 106 inputs across 53 independent questions and 35 finding concepts. The 53 pairs are the subset of 118 constructed questions eligible for third-party attribution. [Sample construction and an actual input pair](DATA.md) explain the eligibility rule and the distinction between G and T.
 
 We extracted two 4096-dimensional representations from the frozen model:
 
@@ -21,7 +21,7 @@ A separate classifier was fitted for each position, hidden-state index, and trai
 
 For each seed, correct predictions across the five test folds were summed and divided by 106. The reported accuracy is the mean across three seeds, representing 318 repeated predictions on 53 independent questions.
 
-## Results
+## Question-grouped cross-validation results
 
 | Position | Hidden-state index | Block interpretation, zero-based | Correct /106 by seed | Mean accuracy |
 |---|---:|---|---|---:|
@@ -46,6 +46,7 @@ These holdouts were evaluated separately from the question-level cross-validatio
 
 ## Code and results
 
-Current entry points and commands: [Reproducibility](REPRODUCIBILITY.md). The original implementations below are retained as references.
-
-[Extraction](../reference/role/extract_hidden_v5.py) / [Original probe](../reference/role/probe_contextual_role.py) / [Holdout analysis](../reference/role/probe_robustness.py) / [Exact counts](../results/role_probe_exact.json)
+- [Current extraction](../experiments/extract_representations.py) / [Current probe](../experiments/attribution_probe.py)
+- [Probe settings](../configs/attribution_probe.json) / [Holdout settings](../configs/attribution_holdouts.json)
+- [Exact counts](../results/role_probe_exact.json) / [Run instructions](REPRODUCIBILITY.md)
+- Historical implementations: [Extraction](../reference/role/extract_hidden_v5.py) / [Probe](../reference/role/probe_contextual_role.py) / [Holdouts](../reference/role/probe_robustness.py)
