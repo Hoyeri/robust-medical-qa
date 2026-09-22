@@ -11,13 +11,13 @@ docs/         Experiment references
 
 ## Installation
 
-Use Python 3.10 or later. Install the attention/probe analysis environment with:
+Use Python 3.12 on a CUDA-capable Linux system. Install the single environment used by dataset construction, model evaluation, and all analyses with:
 
 ```bash
-pip install -e '.[inference]'
+pip install -r requirements.txt
 ```
 
-Dataset construction and model evaluation require CUDA and vLLM 0.24.0. GPT-OSS scoring requires Transformers, accelerate, kernels, Triton 3.4 or later, and a GPU that supports MXFP4. MedQA and official MedDistractQA are downloaded automatically from Hugging Face. Supply model weights separately where a local model is required. Each script also lists its arguments with `--help`.
+The requirements fix the shared PyTorch, Transformers, vLLM, accelerate, kernels, and Triton versions. The host must provide a compatible NVIDIA driver. GPT-OSS-120B scoring additionally requires an MXFP4-capable GPU. MedQA and official MedDistractQA are downloaded automatically from Hugging Face. Supply model weights separately where a local model is required. Each script also lists its arguments with `--help`.
 
 ## Dataset construction
 
