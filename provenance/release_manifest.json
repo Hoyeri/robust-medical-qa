@@ -16,7 +16,7 @@
     "docs/03_transmission.md": "d39f8a8b3a650927480f220c614eb087e22a120ea870c833a384bd31c48f0260",
     "docs/CODE_STRUCTURE.md": "c648f5b14722818a95a6ae95edea5cd05cac1ac3ac2e15ccfb8dd20fa5523f71",
     "docs/NOTATION.md": "b32f5f188b1c0f899798de99c85787e89cb8fb666b5bc706a25afb43fab70f4b",
-    "docs/REFERENCES.md": "18b34afd155ad2938e36c3d00eea0a82c44d3bee701b7e1e53dd200b4140010e",
+    "docs/REFERENCES.md": "5b7acd2ea194aaabed573db066701b140f1a7d1805487c051d2b7899d9c2b3a1",
     "docs/REPRODUCIBILITY.md": "d5d27ea310c59d700ac1f6b9db3566e4a5720a655a668f4cfb2297479ae2a865",
     "experiments/__init__.py": "7ad89b9d1d4512360ca1745ab064e82ffe6e1461eb1de16b6aba34006ddbe4ce",
     "experiments/attention_blocking.py": "017c585351f2bf4b57a4d6658e69e94b8a12cd1561cf8162ca53149fbef30893",
