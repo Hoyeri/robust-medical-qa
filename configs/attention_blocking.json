@@ -1,0 +1,11 @@
+{
+  "layers": "all",
+  "verify_attention": true,
+  "conditions": {
+    "baseline": {"policy": "baseline", "source": "distractor"},
+    "distractor_option_cut": {"policy": "option_cut", "source": "distractor"},
+    "distractor_all_source_cut": {"policy": "all_source_cut", "source": "distractor"},
+    "clinical_option_cut": {"policy": "option_cut", "source": "clinical"},
+    "clinical_all_source_cut": {"policy": "all_source_cut", "source": "clinical"}
+  }
+}

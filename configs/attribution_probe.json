@@ -1,0 +1,5 @@
+{
+  "variants": ["Ma", "H1"],
+  "indices": {"phrase": [0, 8, 9, 10, 11, 12, 13, 14, 15, 16], "answer": [12, 32]},
+  "probe": {"components": 24, "l2": 1.0, "iterations": 25, "epsilon": 0.000001, "standard_clip": null, "logit_clip": null, "nan_to_num": false, "aggregation": "pooled", "folds": 5, "seeds": [0, 1, 2]}
+}

@@ -42,6 +42,8 @@ With oracle source locations, distractor blocking recovered more correct answers
 
 ## Code and results
 
+Current entry points and commands: [Reproducibility](REPRODUCIBILITY.md). The original implementations below are retained as references.
+
 - [E08 generation](../reference/attention/run_e08.py) / [E11 clinical control](../reference/attention/run_e11.py)
 - [Attention blocking](../reference/attention/receiver_knockout.py) / [Source selection](../reference/attention/source_spans.py)
 - [Per-question outcomes](../results/attention_outcomes.csv) / [Aggregated counts](../results/attention_summary.json)

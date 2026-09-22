@@ -17,3 +17,7 @@ outputs/
 *.safetensors
 *.pem
 *.key
+
+*.egg-info/
+build/
+dist/

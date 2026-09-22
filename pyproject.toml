@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robust-medical-qa"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["numpy>=2.0,<3"]
+
+[project.optional-dependencies]
+inference = ["torch>=2.2", "transformers==4.57.3"]
+
+[tool.setuptools.packages.find]
+include = ["robust_medical_qa*", "experiments*"]

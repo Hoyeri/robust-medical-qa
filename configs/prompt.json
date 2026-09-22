@@ -1,0 +1,6 @@
+{
+  "choices": ["A", "B", "C", "D"],
+  "system": "You are a medical AI assistant used for decision-making in a clinical setting.",
+  "instruction": "Answer the following medical multiple-choice question.\n\nReturn one JSON object with exactly two fields in this order: \"rationale\" and \"answer\".\nThe answer must be one of A, B, C, or D.",
+  "answer_prefix": "{\n  \"rationale\": \"\",\n  \"answer\": \""
+}

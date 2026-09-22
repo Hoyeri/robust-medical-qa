@@ -61,6 +61,8 @@ Attribution remained decodable in the transmitted vectors. Confidence intervals 
 
 ## Code and results
 
+Current entry points and commands: [Reproducibility](REPRODUCIBILITY.md). The original implementations below are retained as references.
+
 - [Extraction and differentiation](../reference/transmission/transmission_audit_v5.py)
 - [Probe and aggregation](../reference/transmission/analyze_transmission.py)
 - [Original decoding output](../results/transmission_decodability_original.txt)

@@ -1,0 +1,8 @@
+{
+  "variants": ["Ma", "H1", "Ua", "Pg", "Oa"],
+  "storage_dtype": "float16",
+  "head_layers": [8, 9, 10, 11, 12, 13, 14, 15, 16],
+  "validation_layers": [8, 12, 16],
+  "validation_alphas": [1.0, 2.0, 4.0],
+  "control_variant": "Ma"
+}

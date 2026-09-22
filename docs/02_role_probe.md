@@ -46,4 +46,6 @@ These holdouts were evaluated separately from the question-level cross-validatio
 
 ## Code and results
 
+Current entry points and commands: [Reproducibility](REPRODUCIBILITY.md). The original implementations below are retained as references.
+
 [Extraction](../reference/role/extract_hidden_v5.py) / [Original probe](../reference/role/probe_contextual_role.py) / [Holdout analysis](../reference/role/probe_robustness.py) / [Exact counts](../results/role_probe_exact.json)

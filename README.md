@@ -26,12 +26,16 @@ python3 scripts/reproduce_probe.py --hidden-dir /path/to/hidden_v5 --output /tmp
 
 ## Structure
 
+- `robust_medical_qa/`: shared runtime, attention, extraction, probing, and evaluation modules
+- `experiments/`: configurable experiment entry points
+- `configs/`: experiment settings and historical numerical profiles
+- `tests/`: regression checks and CPU model integration tests
 - `docs/`: methods, sample selection, results, and notation
 - `results/`: aggregate results and per-question outcome labels
 - `scripts/`: file verification, table reconstruction, and CPU probe analysis
-- `reference/`: selected experiment code, with original computational logic
+- `reference/`: historical implementations used for regression comparisons
 - `provenance/`: source paths, SHA-256 hashes, and file manifest
 
-See [Reproducibility](docs/REPRODUCIBILITY.md) for data and runtime requirements.
+See [Code structure](docs/CODE_STRUCTURE.md) for module responsibilities and [Reproducibility](docs/REPRODUCIBILITY.md) for data and runtime requirements.
 
 [Notation](docs/NOTATION.md) / [Related work](docs/REFERENCES.md)

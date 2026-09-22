@@ -1,6 +1,6 @@
-# Experiment code
+# Historical experiment code
 
-Selected files from the original experiments:
+Historical snapshots used to compare the refactored implementations against the original experiments:
 
 - `attention/`: E08 free generation, E11 matched clinical-source control, and attention blocking
 - `role/`: hidden-state extraction, attribution probes, and holdout analysis
@@ -9,3 +9,5 @@ Selected files from the original experiments:
 The two transmission files have reformatted mathematical notation in comments and output strings. Computational logic is unchanged. Original hashes and reformatted-copy hashes are recorded in `../provenance/sources.json`.
 
 The GPU scripts use the original server paths, execution guards, and external project modules. See [Reproducibility](../docs/REPRODUCIBILITY.md) for required resources and `../scripts/` for portable result verification and CPU analysis.
+
+Active entry points are in `experiments/`; shared implementations are in `robust_medical_qa/`. See [Code structure](../docs/CODE_STRUCTURE.md).

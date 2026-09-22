@@ -120,6 +120,26 @@
       "source": "0916/cm_tierB_hpo_v1/results/transmission_v5_output.txt",
       "sha256": "51b112e6d16b9d8ff86d826dd501cdc4c6895189b2a1633288d396d1b7fdb9fb",
       "purpose": "Verbatim A-section excerpt; output is rounded to two decimals"
+    },
+    {
+      "source": "0916/cm_harness/ariel_deps/ariel_gsweep_common.py",
+      "sha256": "6a7b57aa1131e8ac2e6ffe9dfda56fa1d28151b01c229b45433d7da9962158a7",
+      "purpose": "Source of shared prompt, parser, alignment or generation logic in the refactored package"
+    },
+    {
+      "source": "0916/cm_harness/ariel_cm_harness_v3.py",
+      "sha256": "17554b147f5fb7f0bc44f0bc9d8721ee8ac7338139cf3695d74c41d6e3778432",
+      "purpose": "Source of shared prompt, parser, alignment or generation logic in the refactored package"
+    },
+    {
+      "source": "0902_mechanistic_analysis/src/clean_hard_xai/generation_v1/records.py",
+      "sha256": "cbcc2cc93683e1777e3d0473237ef9571d4b104026886f60b8dc30fe8eb0cc99",
+      "purpose": "Source of shared prompt, parser, alignment or generation logic in the refactored package"
+    },
+    {
+      "source": "0902_mechanistic_analysis/src/clean_hard_xai/generation_v1/decoding.py",
+      "sha256": "7cabda54fcaa29af9243ea9554c1934b086bd0ac6f777252b58f0b96858d37de",
+      "purpose": "Source of shared prompt, parser, alignment or generation logic in the refactored package"
     }
   ]
 }
