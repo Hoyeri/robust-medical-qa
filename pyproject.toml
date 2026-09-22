@@ -12,7 +12,7 @@ dependencies = ["numpy>=2.0,<3", "PyYAML>=6", "huggingface-hub>=0.34,<2"]
 inference = ["torch>=2.2", "transformers==4.57.3"]
 
 [tool.setuptools.packages.find]
-include = ["common*", "experiments*"]
+include = ["common*", "experiments*", "pipeline*"]
 
 exclude = ["common.vendor*", "common.tests*"]
 namespaces = false

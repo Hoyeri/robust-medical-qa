@@ -12,10 +12,10 @@ import tempfile
 import unittest
 import numpy as np
 from common.checkpoints import Run, atomic, read, jsonl, sha, child_environment
-from experiments.build_dataset import run as build, generate_pool, settings, sources_from
+from pipeline.build_dataset import run as build, generate_pool, settings, sources_from
 from common.hard_data.scoring import DEFAULT_REVISION
 from common.hard_data.runtime import read_jsonl
-from experiments.evaluate_models import paired_requests, prepare, match_official, result_table, format_results, official_source
+from pipeline.evaluate_models import paired_requests, prepare, match_official, result_table, format_results, official_source
 from common.model_eval.protocol import analyze_pair_outputs
 from common.tests.test_attention import tiny_model, tiny_tokenizer
 from common.extraction import extract
@@ -74,7 +74,7 @@ class PipelineTests(unittest.TestCase):
                             records.append(dict(req,status='ok',model_revision=DEFAULT_REVISION,option_logprobs=scores,top1=target))
                         jsonl(arg('--output'),records);atomic(arg('--manifest'),dict(status='complete'))
                     return SimpleNamespace(returncode=0)
-                with patch('experiments.build_dataset.subprocess.run',side_effect=process):build(args)
+                with patch('pipeline.build_dataset.subprocess.run',side_effect=process):build(args)
                 self.assertEqual(len(calls),3)  # generation + direct score + independent repeat
                 dataset=Path(args.output)/hard_dataset_filename(kind)
                 self.assertEqual(hard_dataset_path(args.output),dataset)
@@ -83,7 +83,7 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(len(paired_requests(pairs)),2)
                 self.assertEqual(read(Path(args.output)/'summary.json')['accepted_candidates'],24)
                 args.resume=True
-                with patch('experiments.build_dataset.subprocess.run',side_effect=AssertionError('Repeated inference')):build(args)
+                with patch('pipeline.build_dataset.subprocess.run',side_effect=AssertionError('Repeated inference')):build(args)
                 self.assertEqual(pairs,read_jsonl(dataset))
                 args.retry_rounds=0
                 with self.assertRaisesRegex(ValueError,'drift'):build(args)
@@ -106,7 +106,7 @@ class PipelineTests(unittest.TestCase):
                 generate_pool([source],config,state,SyntheticBackend())
                 names=('pool.json','target_results.jsonl','score_requests.jsonl')
                 expected={name:(state/name).read_bytes() for name in names}
-                subprocess.run([sys.executable,str(ROOT/'experiments/build_dataset.py'),'--worker',str(state)],
+                subprocess.run([sys.executable,str(ROOT/'pipeline/build_dataset.py'),'--worker',str(state)],
                                cwd=tmp,env=child_environment(),check=True,capture_output=True)
                 self.assertEqual(expected,{name:(state/name).read_bytes() for name in names})
 
@@ -188,7 +188,7 @@ class EvaluationPipelineTests(unittest.TestCase):
         self.check_evaluation(family='nonliteral')
 
     def check_evaluation(self, family, calibrated=True):
-        from experiments.evaluate_models import run as evaluate
+        from pipeline.evaluate_models import run as evaluate
         from common.model_eval.protocol import parse_compatible_response, scientific_role_for_view, canonical_sha256
         from common.hard_data.runtime import sha256_file, write_json, write_jsonl
         real_run=subprocess.run
@@ -201,6 +201,9 @@ class EvaluationPipelineTests(unittest.TestCase):
             dev=[pair(i,'harmful_flip_priority' if i<16 else 'maximum_D_fallback') for i in range(32)]
             jsonl(root/'dev.jsonl',dev);jsonl(root/'pairs.jsonl',[pair(100,'harmful_flip_priority')])
             hf_file=root/'official.json'
+            medqa_file=root/'medqa.json'
+            jsonl(medqa_file,[dict(id='test-00228',sent1='Case 100?',sent2='',label=0,
+                                   ending0='a',ending1='b',ending2='c',ending3='d')])
             if family:
                 atomic(hf_file,[dict(
                     question='Extra. Another case?',distracting_sentence='Extra.',
@@ -237,15 +240,22 @@ class EvaluationPipelineTests(unittest.TestCase):
                         'outputs':dict(sha256=sha256_file(path/'outputs.jsonl'))}))
                 return SimpleNamespace(returncode=0)
             terminal=io.StringIO()
-            with patch('huggingface_hub.hf_hub_download',return_value=str(hf_file)) as download, \
-                 patch('experiments.evaluate_models.subprocess.run',side_effect=process),redirect_stdout(terminal):
+            def download_file(**kwargs):
+                return str(medqa_file if kwargs['repo_id'].startswith('GBaker/') else hf_file)
+            with patch('huggingface_hub.hf_hub_download',side_effect=download_file) as download, \
+                 patch('pipeline.evaluate_models.subprocess.run',side_effect=process),redirect_stdout(terminal):
                 evaluate(args)
+            from common.medqa import medqa_source
+            medqa=medqa_source('test')
+            download.assert_any_call(repo_id=medqa['repo_id'],repo_type='dataset',
+                filename=medqa['filename'],revision=medqa['revision'],token=False)
+            self.assertEqual(read(root/'out/.state/medqa_metadata.json')['alignment'],
+                             [dict(question_id='i100',hf_id='test-00228')])
             if family:
                 source=official_source(family)
-                download.assert_called_once_with(repo_id=source['repo_id'],repo_type='dataset',
+                download.assert_any_call(repo_id=source['repo_id'],repo_type='dataset',
                     filename=source['filename'],revision=source['revision'],token=False)
-            else:
-                download.assert_not_called()
+            self.assertEqual(download.call_count,2 if family else 1)
             self.assertEqual(calls,['calibration','full'] if calibrated else ['full'])
             self.assertEqual((root/'out/.state/calibration').exists(),calibrated)
             self.assertEqual(read(root/'out/summary.json')['results']['questions'],1)
@@ -267,8 +277,9 @@ class EvaluationPipelineTests(unittest.TestCase):
                 self.assertEqual(summary['official']['available_questions'],2)
                 self.assertNotIn('revision',summary['official'])
             args.resume=True
-            with patch('experiments.evaluate_models.subprocess.run',side_effect=AssertionError('Repeated inference')), \
-                 patch('experiments.evaluate_models.load_official',side_effect=AssertionError('Repeated download')),redirect_stdout(io.StringIO()):
+            with patch('pipeline.evaluate_models.subprocess.run',side_effect=AssertionError('Repeated inference')), \
+                 patch('pipeline.evaluate_models.load_medqa',side_effect=AssertionError('Repeated MedQA download')), \
+                 patch('pipeline.evaluate_models.load_official',side_effect=AssertionError('Repeated download')),redirect_stdout(io.StringIO()):
                 evaluate(args)
 
     def test_worker_keeps_gate_for_original_protocol(self):

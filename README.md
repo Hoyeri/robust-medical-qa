@@ -3,7 +3,8 @@
 Code for constructing MedDistractQA-Hard, an unreleased research version that strengthens MedDistractQA, evaluating models, and analyzing internal representations. Bystander is the primary analysis setting; Nonliteral is also supported.
 
 ```text
-experiments/  Experiment arguments, execution, and analysis
+pipeline/     Dataset construction and benchmark evaluation
+experiments/  Attention blocking, attribution probing, transmission, and head search
 common/       Shared computations, model calls, configuration, and tests
 docs/         Experiment references
 ```
@@ -16,47 +17,48 @@ Use Python 3.10 or later. Install the attention/probe analysis environment with:
 pip install -e '.[inference]'
 ```
 
-Dataset construction and model evaluation require CUDA and vLLM 0.24.0. GPT-OSS scoring requires Transformers, accelerate, kernels, Triton 3.4 or later, and a GPU that supports MXFP4. Supply the original dataset and model weights separately. Each script also lists its arguments with `--help`.
+Dataset construction and model evaluation require CUDA and vLLM 0.24.0. GPT-OSS scoring requires Transformers, accelerate, kernels, Triton 3.4 or later, and a GPU that supports MXFP4. MedQA and official MedDistractQA are downloaded automatically from Hugging Face. Supply model weights separately where a local model is required. Each script also lists its arguments with `--help`.
 
 ## Dataset construction
 
-Generate eight candidates per incorrect answer option, validate them under two option orders, and select Hard examples using GPT-OSS-120B scores. For both Bystander and Nonliteral, only candidate slots rejected by the option-association check are regenerated, for up to two additional rounds.
+Load MedQA from [Hugging Face](https://huggingface.co/datasets/GBaker/MedQA-USMLE-4-options-hf), then generate eight candidates per incorrect answer option, validate them under two option orders, and select Hard examples using GPT-OSS-120B scores. For both Bystander and Nonliteral, only candidate slots rejected by the option-association check are regenerated, for up to two additional rounds.
 
 ```bash
-python experiments/build_dataset.py --type bystander --input data/clean.jsonl --split internal --output outputs/bystander
-python experiments/build_dataset.py --type nonliteral --input data/clean.jsonl --split internal --output outputs/nonliteral
+python pipeline/build_dataset.py --type bystander --split test --output outputs/bystander
+python pipeline/build_dataset.py --type nonliteral --split test --output outputs/nonliteral
 ```
 
 | Argument | Required/default | Description |
 | --- | --- | --- |
-| `--input` | Required | JSONL file containing the original MedQA questions |
+| `--input` | Omitted | Optional local MedQA JSONL. If omitted, download MedQA from Hugging Face |
 | `--type` | Required | Distractor family to generate: `bystander` / `nonliteral` |
-| `--split` | `internal` | Dataset label assigned to all input questions: `dev` / `internal` / `test` |
+| `--split` | `test` for HF / `internal` for local input | HF split: `train` / `dev` / `test`. With `--input`, assigns a label to the entire input; `internal` is also supported |
 | `--retry-rounds` | `2` | Additional generation rounds for rejected candidate slots: `0` / `1` / `2` |
 | `--output` | Required | Output directory |
 | `--generation-python` | Current Python | Python executable in the vLLM environment used for candidate generation/validation |
 | `--scoring-python` | Current Python | Python executable in the Transformers/MXFP4 environment used for GPT-OSS scoring |
 | `--resume` | Off | Resume saved work with the same inputs and settings |
 
-The input JSONL uses `idx`, `source_id`, `question`, `options` (A–D), and `answer_idx`. Generated data is saved as `meddistractqa-hard-bystander.jsonl` or `meddistractqa-hard-nonliteral.jsonl`, with the original MedQA question and its Hard version stored together. The pipeline also saves `views.jsonl`, `selection.jsonl`, and `summary.json`.
+The HF test input preserves the source IDs and iteration order of the existing construction run. An optional local input JSONL uses `idx`, `source_id`, `question`, `options` (A–D), and `answer_idx`. Generated data is saved as `meddistractqa-hard-bystander.jsonl` or `meddistractqa-hard-nonliteral.jsonl`, with the original MedQA question and its Hard version stored together. The pipeline also saves `views.jsonl`, `selection.jsonl`, and `summary.json`.
 
 ## Model evaluation
 
-Compare three versions of the same original questions: MedQA (Clean, without a distractor), official MedDistractQA, and MedDistractQA-Hard. The official data is downloaded and cached automatically from [Hugging Face](https://huggingface.co/datasets/KrithikV/MedDistractQA), then matched to the Hard input by checking the original question, options, and correct answer.
+Compare three versions of the same original questions: MedQA (Clean, without a distractor), official MedDistractQA, and MedDistractQA-Hard. [MedQA](https://huggingface.co/datasets/GBaker/MedQA-USMLE-4-options-hf) and [official MedDistractQA](https://huggingface.co/datasets/KrithikV/MedDistractQA) are downloaded and cached automatically. Match by the original question, options, and correct answer while retaining the Hard input IDs and order.
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python experiments/evaluate_models.py --input outputs/bystander --official bystander --model llama31_8b_instruct --output outputs/evaluation
+CUDA_VISIBLE_DEVICES=0 python pipeline/evaluate_models.py --input outputs/bystander --official bystander --model llama31_8b_instruct --output outputs/evaluation
 ```
 
 | Argument | Required/default | Description |
 | --- | --- | --- |
 | `--input` | Required | Dataset construction output directory, or a `meddistractqa-hard-bystander.jsonl` / `meddistractqa-hard-nonliteral.jsonl` file |
+| `--medqa-split` | `test` | HF MedQA split containing the original Hard questions: `train` / `dev` / `test` |
 | `--official` | Omitted | Official comparison family: `bystander` / `nonliteral`. Use the same family as the Hard input. If omitted, evaluate only MedQA (Clean) and MedDistractQA-Hard |
 | `--model` | `llama31_8b_instruct` | Model configuration key. See `primary_model_keys` in the [model configuration](common/model_eval/models.json) for supported models |
 | `--output` | Required | Evaluation output directory |
 | `--resume` | Off | Resume saved work with the same inputs and settings |
 
-When given a construction output directory, the script locates the dataset file automatically. The Hard input determines which questions are evaluated. If an official counterpart cannot be found, execution stops before inference.
+When given a construction output directory, the script locates the dataset file automatically. The Hard input determines which questions are evaluated. If a MedQA counterpart or a requested official counterpart cannot be found, execution stops before inference.
 
 After evaluation, the terminal displays question counts, correct/wrong/unparseable answer counts, accuracy, and the accuracy difference from Clean for each condition. The same table is saved as `summary.txt` and `summary.csv`, detailed aggregates as `summary.json`, and individual responses as `predictions.jsonl`. Unparseable answers remain in the accuracy denominator.
 

@@ -69,7 +69,8 @@ class Run:
             root = Path(__file__).resolve().parent
             code = {str(p.relative_to(root)): sha(p) for p in sorted(root.rglob('*'))
                     if p.suffix in ('.py', '.json', '.yaml') and 'tests' not in p.parts and '__pycache__' not in p.parts}
-            code.update({'experiments/' + p.name: sha(p) for p in sorted((root.parent / 'experiments').glob('*.py'))})
+            for folder in ('experiments', 'pipeline'):
+                code.update({folder + '/' + p.name: sha(p) for p in sorted((root.parent / folder).glob('*.py'))})
             Checkpoints(self.state).cached('run', dict(binding=binding, code=code), lambda: True)
         except Exception:
             self.lock.close()

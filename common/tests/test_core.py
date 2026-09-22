@@ -77,7 +77,7 @@ class CoreTests(unittest.TestCase):
 
     def test_imports_have_no_execution_side_effects(self):
         import importlib
-        for name in ['experiments.build_dataset','experiments.evaluate_models','experiments.attribution_probe',
+        for name in ['pipeline.build_dataset','pipeline.evaluate_models','experiments.attribution_probe',
                      'experiments.transmission','experiments.head_search','experiments.attention_blocking']:
             self.assertTrue(importlib.import_module(name))
 

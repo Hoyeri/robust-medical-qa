@@ -15,6 +15,7 @@ from common.model_eval.protocol import (align_source_triads, build_full_requests
     EXPECTED_PROTOCOL_STATUS, DIRECT_PROTOCOL_STATUS)
 from common.model_eval.core import validate_source_pair
 from common.io import hard_dataset_path
+from common.medqa import load_medqa, match_medqa, medqa_source
 
 MODEL_CONFIG = ROOT / "common/model_eval/models.json"
 OFFICIAL_REPO = 'KrithikV/MedDistractQA'
@@ -107,6 +108,10 @@ def result_table(summary):
 def format_results(summary):
     labels = {'clean': 'Clean', 'meddistractqa': 'Official', 'hard': 'Hard'}
     lines = [f"Model: {summary['model']}", f"Paired questions: {summary['results']['questions']}"]
+    if summary.get('medqa'):
+        source = summary['medqa']
+        lines.append(f"MedQA: {source['repo_id']} / {source['split']} / "
+                     f"matched {source['matched_questions']} of {source['available_questions']}")
     if summary.get('official'):
         source = summary['official']
         lines.append(f"Official: {source['repo_id']} / {source['family']} / "
@@ -170,17 +175,22 @@ def run(args):
     paths={'input':input_path}
     if calibration_path is not None: paths['calibration']=calibration_path
     source=official_source(args.official) if args.official else None
+    medqa_split=getattr(args,'medqa_split','test')
     with Run(args.output,dict(inputs={k:sha(Path(v)) for k,v in paths.items()},model=args.model,
-                             registry=registry,official=source),args.resume) as run:
+                             registry=registry,official=source,medqa=medqa_source(medqa_split)),args.resume) as run:
         state=run.state
         def prepare_inputs():
-            pairs=read_jsonl(input_path)
-            official, extra=None, []
+            medqa, metadata=load_medqa(medqa_split)
+            pairs, mapping=match_medqa(medqa,read_jsonl(input_path))
+            metadata.update(matched_questions=len(pairs),scope='hard_input_questions',alignment=mapping)
+            atomic(state/'medqa_metadata.json',metadata)
+            official, extra=None, [state/'medqa_metadata.json']
+            print(f"MedQA {medqa_split}: matched {len(pairs)} / {metadata['available_questions']} questions",flush=True)
             if args.official:
                 official, metadata=load_official(pairs,args.official)
                 atomic(state/'official_metadata.json',metadata)
                 jsonl(state/'official_matched.jsonl',official)
-                extra=[state/'official_metadata.json',state/'official_matched.jsonl']
+                extra += [state/'official_metadata.json',state/'official_matched.jsonl']
                 print(f"Official {args.official}: matched {len(official)} / {metadata['available_questions']} questions",flush=True)
             development=read_jsonl(calibration_path) if calibration_path is not None else None
             return prepare(pairs,development,official,registry,args.model,state)+extra
@@ -211,6 +221,9 @@ def run(args):
             report=read(state/'full/analysis/analysis.json')
             summary=dict(model=registry['models'][args.model]['model_id'],
                          results=report['counts'],tokens=report['generated_token_count'])
+            meta=read(state/'medqa_metadata.json')
+            summary['medqa']={key:meta[key] for key in
+                ('repo_id','split','available_questions','matched_questions','scope')}
             if args.official:
                 meta=read(state/'official_metadata.json')
                 summary['official']={key:meta[key] for key in
@@ -236,6 +249,8 @@ def main():
     parser=argparse.ArgumentParser(description='Evaluate MedQA, official MedDistractQA, and Hard data and summarize results')
     parser.add_argument('--input',required=True,help='Hard dataset JSONL or generation output directory')
     parser.add_argument('--calibration',help=argparse.SUPPRESS)
+    parser.add_argument('--medqa-split',choices=['train','dev','test'],default='test',
+                        help='HF MedQA split containing the original questions in the Hard input')
     parser.add_argument('--official',choices=tuple(OFFICIAL_FILES),
                         help='Download the official HF dataset and match it to the input Hard questions')
     parser.add_argument('--model',choices=registry['primary_model_keys'],default='llama31_8b_instruct',

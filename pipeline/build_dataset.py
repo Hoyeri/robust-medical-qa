@@ -16,6 +16,7 @@ from common.hard_data.prompts import prompt_gen_beta_confounder, NONLITERAL_PROM
 from common.hard_data.scoring import DEFAULT_MODEL, DEFAULT_REVISION
 from common.hard_data.dataset import select_dataset, paired_rows, validate_scores
 from common.io import hard_dataset_filename
+from common.medqa import load_medqa, medqa_source
 
 
 def sources_from(rows, split):
@@ -92,11 +93,26 @@ def finish(sources, config, state, output):
 
 
 def run(args):
-    sources = sources_from(read_jsonl(args.input), args.split)
-    config = settings(args.type,args.split,args.retry_rounds)
-    with Run(args.output, dict(input=sha(Path(args.input)), config=config), args.resume) as run:
+    input_path = Path(args.input) if args.input else None
+    split = args.split or ('internal' if input_path else 'test')
+    source = None if input_path else medqa_source(split)
+    config = settings(args.type,split,args.retry_rounds)
+    binding = dict(input=sha(input_path) if input_path else source, config=config)
+    with Run(args.output, binding, args.resume) as run:
         state, output = run.state, run.output
-        atomic(state/'sources.json', sources); atomic(state/'config.json',config)
+        def prepare_sources():
+            extra = []
+            if input_path:
+                rows = read_jsonl(input_path)
+            else:
+                rows, metadata = load_medqa(split, construction=True)
+                atomic(state/'medqa_metadata.json', metadata)
+                extra.append(state/'medqa_metadata.json')
+            atomic(state/'sources.json', sources_from(rows, split))
+            atomic(state/'config.json', config)
+            return [state/'sources.json', state/'config.json'] + extra
+        run.stage('prepare_sources', prepare_sources)
+        sources = read(state/'sources.json')
         def candidate_stage():
             subprocess.run([getattr(args,'generation_python',sys.executable),str(Path(__file__).resolve()),'--worker',str(state)],env=child_environment(),check=True)
             return [state/'target_results.jsonl',state/'pool.json',state/'score_requests.jsonl']
@@ -129,9 +145,10 @@ def run(args):
 
 def main():
     parser=argparse.ArgumentParser(description='Generate, validate, and score Bystander/Nonliteral candidates and select Hard examples')
-    parser.add_argument('--input',required=True,help='Clean MedQA JSONL')
+    parser.add_argument('--input',help='Optional local Clean MedQA JSONL; otherwise download MedQA from Hugging Face')
     parser.add_argument('--type',required=True,choices=['bystander','nonliteral'])
-    parser.add_argument('--split',choices=['dev','internal','test'],default='internal')
+    parser.add_argument('--split',choices=['train','dev','internal','test'],
+                        help='HF split (default: test), or a local input label (default: internal; internal requires --input)')
     parser.add_argument('--retry-rounds',type=int,choices=[0,1,2],default=2)
     parser.add_argument('--output',required=True)
     parser.add_argument('--resume',action='store_true')
