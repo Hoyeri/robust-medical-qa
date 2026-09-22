@@ -32,7 +32,7 @@ python pipeline/build_dataset.py --type nonliteral --split test --output outputs
 | --- | --- | --- |
 | `--input` | Omitted | Optional local MedQA JSONL. If omitted, download MedQA from Hugging Face |
 | `--type` | Required | Distractor family to generate: `bystander` / `nonliteral` |
-| `--split` | `test` for HF / `internal` for local input | HF split: `train` / `dev` / `test`. With `--input`, assigns a label to the entire input; `internal` is also supported |
+| `--split` | Automatic: `test` without `--input` / `internal` with `--input` | Without `--input`, select the HF split: `train` / `dev` / `test`. With `--input`, assign one of those labels or `internal` to the local data |
 | `--retry-rounds` | `2` | Additional generation rounds for rejected candidate slots: `0` / `1` / `2` |
 | `--output` | Required | Output directory |
 | `--generation-python` | Current Python | Python executable in the vLLM environment used for candidate generation/validation |
