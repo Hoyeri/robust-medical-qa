@@ -63,3 +63,7 @@ Transmission validation records the actual alpha in each output row. Baseline co
 - Unit/integration tests: historical probe profiles, nonstandard model dimensions, source isolation, contribution reconstruction, gradient checks, hook cleanup, local model loading, generation, extraction, and analysis.
 
 Model integration tests use a two-block random Llama on CPU. Full Llama-3.1-8B generation parity remains a separate validation run.
+
+## External head-search snapshot
+
+`external/lsld-v1.0.0-medqa/` preserves the upstream package structure and contents. It does not replace the shared modules and is outside the current package installation. See [file inventory and dependencies](04_entrainment_heads.md).

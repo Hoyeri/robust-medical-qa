@@ -124,3 +124,7 @@ The full suite uses a small randomly initialized Llama with a locally created to
 Original questions, generated rationales, activation NPZ files, and model weights are stored externally. The historical experiments used `meta-llama/Llama-3.1-8B-Instruct`, revision `0e9e39f249a16976918f6564b8830bc894c89659`, BF16/eager attention, batch size 1, and no KV cache.
 
 `reference/` retains the original implementations for comparison. New experiment entry points use only modules in this repository and the declared dependencies. Original hashes and source paths are recorded in `provenance/sources.json`.
+
+## Imported head-search code
+
+[Entrainment head search](04_entrainment_heads.md) documents the upstream entry points, split and mask requirements, and missing v1.0.0 modules. The main package installation commands above do not provision that snapshot's runtime.

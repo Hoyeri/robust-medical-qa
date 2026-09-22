@@ -12,6 +12,10 @@ These analyses ask whether blocking a known distractor changes generated answers
 | Attribution probe | 53 M/H1 pairs, finding representations and a fixed answer slot with an empty rationale | Finding-token hidden-state indices 8–16: 99.69–100% question-grouped classification accuracy. | [Methods and results](docs/02_role_probe.md) |
 | Transmission audit | The same 53 M/H1 pairs, contributions to the fixed answer slot and diagnostic-score sensitivity | Attribution remained decodable after attention and output projection. Aggregate M/H1 sensitivity differences had confidence intervals including zero. | [Methods and results](docs/03_transmission.md) |
 
+## Entrainment head-search code
+
+janthonio03's `lsld-v1.0.0-medqa` folder is included under `external/` with its original structure and file contents. It contains joint head-mask search, mask evaluation, and individual-head ablation code. See [experiment setup and execution requirements](docs/04_entrainment_heads.md).
+
 [Sample construction and example](docs/DATA.md) / [Notation](docs/NOTATION.md) / [Experiment references](docs/REFERENCES.md)
 
 ## Check stored results
@@ -40,6 +44,7 @@ Probe recalculation needs saved activation arrays. Model extraction and generati
 - `scripts/`: file verification, table reconstruction, and CPU probe analysis
 - `tests/`: regression checks and CPU model integration tests
 - `reference/`: historical implementations for comparison
+- `external/`: external experiment snapshots with their original structure
 - `provenance/`: original source paths, hashes, and validation records
 
 [Code structure](docs/CODE_STRUCTURE.md)
