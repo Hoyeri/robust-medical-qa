@@ -104,13 +104,14 @@ def from_pairs(pairs, tokenizer, prompt):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input', required=True, help='Hard dataset JSONL or generation output directory')
+    parser.add_argument('--input', help='Optional Hard JSONL/directory; otherwise find a single dataset in repository outputs/bystander or outputs/nonliteral')
     parser.add_argument('--output', required=True)
     parser.add_argument('--config', help='Optional experiment configuration JSON')
     parser.add_argument('--resume', action='store_true')
     add_runtime_arguments(parser)
     args = parser.parse_args()
     input_path = hard_dataset_path(args.input)
+    print('Dataset: ' + str(input_path), flush=True)
     cfg = read_json(args.config or ROOT / 'common/configs/attention_blocking.json')
     prompt = read_json(ROOT / 'common/prompt.json')
     binding = dict(input=sha(input_path), config=cfg, prompt=prompt,

@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import numpy as np
 from common.io import read_json, read_jsonl, hard_dataset_path, hard_dataset_filename
 from common.checkpoints import atomic
@@ -121,6 +122,32 @@ class CoreTests(unittest.TestCase):
                 sentence,(a,b)=finding_source(item,variant)
                 findings.append(sentence[a:b])
             self.assertEqual(*findings)
+
+    def test_default_hard_inputs_missing_single_multiple_and_override(self):
+        with tempfile.TemporaryDirectory() as d, patch('common.io.HARD_OUTPUT_ROOT', Path(d)/'outputs'):
+            root = Path(d)/'outputs'
+            with self.assertRaisesRegex(ValueError, 'provide --input PATH'):
+                hard_dataset_path()
+            bystander = root/'bystander'/hard_dataset_filename('bystander')
+            bystander.parent.mkdir(parents=True)
+            bystander.write_text('{}\n')
+            self.assertEqual(hard_dataset_path(), bystander)
+            self.assertEqual(hard_dataset_path(family='bystander'), bystander)
+            with self.assertRaisesRegex(ValueError, 'No Hard dataset'):
+                hard_dataset_path(family='nonliteral')
+            nonliteral = root/'nonliteral'/hard_dataset_filename('nonliteral')
+            nonliteral.parent.mkdir()
+            nonliteral.write_text('{}\n')
+            with self.assertRaisesRegex(ValueError, 'Multiple Hard datasets'):
+                hard_dataset_path()
+            self.assertEqual(hard_dataset_path(family='nonliteral'), nonliteral)
+            custom = Path(d)/'custom.jsonl'
+            custom.write_text('{}\n')
+            self.assertEqual(hard_dataset_path(custom, family='bystander'), custom)
+            with self.assertRaisesRegex(ValueError, 'Dataset file not found'):
+                hard_dataset_path(Path(d)/'missing.jsonl')
+            bystander.rename(bystander.parent/'pairs.jsonl')
+            self.assertEqual(hard_dataset_path(family='bystander'), bystander.parent/'pairs.jsonl')
 
     def test_pair_loader_preserves_intersection_and_order(self):
         with tempfile.TemporaryDirectory() as d:

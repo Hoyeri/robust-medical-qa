@@ -46,19 +46,19 @@ The HF test input preserves the source IDs and iteration order of the existing c
 Compare three versions of the same original questions: MedQA (Clean, without a distractor), official MedDistractQA, and MedDistractQA-Hard. [MedQA](https://huggingface.co/datasets/GBaker/MedQA-USMLE-4-options-hf) and [official MedDistractQA](https://huggingface.co/datasets/KrithikV/MedDistractQA) are downloaded and cached automatically. Match by the original question, options, and correct answer while retaining the Hard input IDs and order.
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python pipeline/evaluate_models.py --input outputs/bystander --official bystander --model llama31_8b_instruct --output outputs/evaluation
+CUDA_VISIBLE_DEVICES=0 python pipeline/evaluate_models.py --official bystander --model llama31_8b_instruct --output outputs/evaluation
 ```
 
 | Argument | Required/default | Description |
 | --- | --- | --- |
-| `--input` | Required | Dataset construction output directory, or a `meddistractqa-hard-bystander.jsonl` / `meddistractqa-hard-nonliteral.jsonl` file |
+| `--input` | Auto-detected | Use the generated Hard dataset in repository `outputs/bystander/` or `outputs/nonliteral/`. Specify a file/directory only when stored elsewhere or when selecting between multiple datasets |
 | `--medqa-split` | `test` | HF MedQA split containing the original Hard questions: `train` / `dev` / `test` |
 | `--official` | Omitted | Official comparison family: `bystander` / `nonliteral`. Use the same family as the Hard input. If omitted, evaluate only MedQA (Clean) and MedDistractQA-Hard |
 | `--model` | `llama31_8b_instruct` | Model configuration key. See `primary_model_keys` in the [model configuration](common/model_eval/models.json) for supported models |
 | `--output` | Required | Evaluation output directory |
 | `--resume` | Off | Resume saved work with the same inputs and settings |
 
-When given a construction output directory, the script locates the dataset file automatically. The Hard input determines which questions are evaluated. If a MedQA counterpart or a requested official counterpart cannot be found, execution stops before inference.
+Without `--input`, look in `outputs/bystander/` and `outputs/nonliteral/` relative to the repository. `--official` selects the matching family; otherwise use the only available dataset. If no dataset is found or both remain eligible, the script asks for `--input PATH`. An explicit path takes precedence. The Hard input determines which questions are evaluated. If a MedQA counterpart or a requested official counterpart cannot be found, execution stops before inference.
 
 After evaluation, the terminal displays question counts, correct/wrong/unparseable answer counts, accuracy, and the accuracy difference from Clean for each condition. The same table is saved as `summary.txt` and `summary.csv`, detailed aggregates as `summary.json`, and individual responses as `predictions.jsonl`. Unparseable answers remain in the accuracy denominator.
 
@@ -67,12 +67,12 @@ After evaluation, the terminal displays question counts, correct/wrong/unparseab
 Generate rationales and answers with Llama-3.1-8B-Instruct while blocking attention to the distractor or a token-count-matched source from the original clinical text. Use the Hard data generated above; the code computes source token positions automatically.
 
 ```bash
-python experiments/attention_blocking.py --input outputs/bystander --model models/llama31-8b-instruct --device cuda --dtype bfloat16 --output outputs/attention
+python experiments/attention_blocking.py --model models/llama31-8b-instruct --device cuda --dtype bfloat16 --output outputs/attention
 ```
 
 | Argument | Required/default | Description |
 | --- | --- | --- |
-| `--input` | Required | Dataset construction output directory, or a `meddistractqa-hard-bystander.jsonl` / `meddistractqa-hard-nonliteral.jsonl` file |
+| `--input` | Auto-detected | Use the generated Hard dataset in repository `outputs/bystander/` or `outputs/nonliteral/`. Specify a file/directory only when stored elsewhere or when selecting between multiple datasets |
 | `--model` | Required | Local directory containing Llama model weights and configuration |
 | `--tokenizer` | Model directory | Local tokenizer directory, if separate from the model |
 | `--device` | `cpu` | Execution device, such as `cpu`, `cuda`, or `cuda:0` |
@@ -80,6 +80,8 @@ python experiments/attention_blocking.py --input outputs/bystander --model model
 | `--config` | [Default configuration](common/configs/attention_blocking.json) | Experiment JSON specifying blocking conditions, target layers, and related settings |
 | `--output` | Required | Output directory |
 | `--resume` | Off | Resume saved work with the same inputs and settings |
+
+Without `--input`, use the only Hard dataset found in repository `outputs/bystander/` or `outputs/nonliteral/`. If both exist or neither exists, provide `--input PATH`. The selected path is printed before execution.
 
 Outputs are `outcomes.csv` and `summary.json`. All questions in the input file are evaluated.
 

@@ -4,6 +4,8 @@ import json
 import os
 from pathlib import Path
 
+HARD_OUTPUT_ROOT = Path(__file__).resolve().parents[1] / 'outputs'
+
 
 def require(condition, message):
     if not condition:
@@ -49,8 +51,24 @@ def hard_dataset_filename(family):
     return f'meddistractqa-hard-{family}.jsonl'
 
 
-def hard_dataset_path(path):
-    """Accept a dataset file or one generation output directory."""
+def hard_dataset_path(path=None, *, family=None):
+    """Resolve an explicit input or the standard construction output folders."""
+    if path is None:
+        families = ('bystander', 'nonliteral') if family is None else (family,)
+        candidates = []
+        for kind in families:
+            directory = HARD_OUTPUT_ROOT / kind
+            dataset = directory / hard_dataset_filename(kind)
+            if not dataset.is_file():
+                dataset = directory / 'pairs.jsonl'
+            if dataset.is_file():
+                candidates.append(dataset)
+        searched = ', '.join(str(HARD_OUTPUT_ROOT / kind) for kind in families)
+        require(bool(candidates), f'No Hard dataset found in {searched}. '
+                'Generate it with pipeline/build_dataset.py or provide --input PATH.')
+        require(len(candidates) == 1, 'Multiple Hard datasets found: '
+                + ', '.join(str(p) for p in candidates) + '. Select one with --input PATH.')
+        return candidates[0]
     path = Path(path)
     if path.is_dir():
         candidates = [path / hard_dataset_filename(f) for f in ('bystander', 'nonliteral')]

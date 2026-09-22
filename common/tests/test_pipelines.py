@@ -169,6 +169,12 @@ class PipelineTests(unittest.TestCase):
 
 
 class EvaluationPipelineTests(unittest.TestCase):
+    def test_automatic_input_without_official_then_resume(self):
+        self.check_evaluation(family=None, calibrated=False, automatic=True)
+
+    def test_automatic_nonliteral_with_official_then_resume(self):
+        self.check_evaluation(family='nonliteral', calibrated=False, automatic=True)
+
     def test_direct_two_views_then_resume(self):
         self.check_evaluation(family=None, calibrated=False)
 
@@ -187,7 +193,7 @@ class EvaluationPipelineTests(unittest.TestCase):
     def test_nonliteral_three_views_then_resume(self):
         self.check_evaluation(family='nonliteral')
 
-    def check_evaluation(self, family, calibrated=True):
+    def check_evaluation(self, family, calibrated=True, automatic=False):
         from pipeline.evaluate_models import run as evaluate
         from common.model_eval.protocol import parse_compatible_response, scientific_role_for_view, canonical_sha256
         from common.hard_data.runtime import sha256_file, write_json, write_jsonl
@@ -215,6 +221,14 @@ class EvaluationPipelineTests(unittest.TestCase):
             args=SimpleNamespace(input=root/'pairs.jsonl' if calibrated else root/'dataset',
                                  calibration=root/'dev.jsonl' if calibrated else None,official=family,
                                  model='llama31_8b_instruct',output=root/'out',resume=False)
+            if automatic:
+                args.input=None
+                jsonl(root/'outputs'/(family or 'bystander')/hard_dataset_filename(family or 'bystander'),
+                      read_jsonl(root/'pairs.jsonl'))
+                if family:
+                    # A different family is present too; --official must select the intended input.
+                    other='bystander' if family=='nonliteral' else 'nonliteral'
+                    jsonl(root/'outputs'/other/hard_dataset_filename(other),[pair(101,'harmful_flip_priority')])
             calls=[]
             def process(command,**kwargs):
                 if command[2]!='common.model_eval.run':return real_run(command,**kwargs)
@@ -243,6 +257,7 @@ class EvaluationPipelineTests(unittest.TestCase):
             def download_file(**kwargs):
                 return str(medqa_file if kwargs['repo_id'].startswith('GBaker/') else hf_file)
             with patch('huggingface_hub.hf_hub_download',side_effect=download_file) as download, \
+                 patch('common.io.HARD_OUTPUT_ROOT',root/'outputs'), \
                  patch('pipeline.evaluate_models.subprocess.run',side_effect=process),redirect_stdout(terminal):
                 evaluate(args)
             from common.medqa import medqa_source
@@ -278,6 +293,7 @@ class EvaluationPipelineTests(unittest.TestCase):
                 self.assertNotIn('revision',summary['official'])
             args.resume=True
             with patch('pipeline.evaluate_models.subprocess.run',side_effect=AssertionError('Repeated inference')), \
+                 patch('common.io.HARD_OUTPUT_ROOT',root/'outputs'), \
                  patch('pipeline.evaluate_models.load_medqa',side_effect=AssertionError('Repeated MedQA download')), \
                  patch('pipeline.evaluate_models.load_official',side_effect=AssertionError('Repeated download')),redirect_stdout(io.StringIO()):
                 evaluate(args)

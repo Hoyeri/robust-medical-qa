@@ -170,7 +170,8 @@ def prepare(pairs, development, official, registry, model, state):
 def run(args):
     registry=read(MODEL_CONFIG)
     if args.model not in registry['primary_model_keys']: raise ValueError('Unknown evaluation model')
-    input_path=hard_dataset_path(args.input)
+    input_path=hard_dataset_path(args.input,family=args.official)
+    print('Dataset: '+str(input_path),flush=True)
     calibration_path=hard_dataset_path(args.calibration) if getattr(args,'calibration',None) else None
     paths={'input':input_path}
     if calibration_path is not None: paths['calibration']=calibration_path
@@ -247,7 +248,7 @@ def run(args):
 def main():
     registry=read(MODEL_CONFIG)
     parser=argparse.ArgumentParser(description='Evaluate MedQA, official MedDistractQA, and Hard data and summarize results')
-    parser.add_argument('--input',required=True,help='Hard dataset JSONL or generation output directory')
+    parser.add_argument('--input',help='Optional Hard JSONL/directory; otherwise use repository outputs/bystander or outputs/nonliteral (--official selects the family)')
     parser.add_argument('--calibration',help=argparse.SUPPRESS)
     parser.add_argument('--medqa-split',choices=['train','dev','test'],default='test',
                         help='HF MedQA split containing the original questions in the Hard input')
