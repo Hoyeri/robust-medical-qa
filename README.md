@@ -38,4 +38,4 @@ python3 scripts/reproduce_probe.py --hidden-dir /path/to/hidden_v5 --output /tmp
 
 See [Code structure](docs/CODE_STRUCTURE.md) for module responsibilities and [Reproducibility](docs/REPRODUCIBILITY.md) for data and runtime requirements.
 
-[Notation](docs/NOTATION.md) / [Related work](docs/REFERENCES.md)
+[Notation](docs/NOTATION.md) / [Experiment references](docs/REFERENCES.md)
