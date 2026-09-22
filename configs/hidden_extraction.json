@@ -1,5 +1,0 @@
-{
-  "variants": ["Ma", "H1", "Oa", "Pg", "Ua"],
-  "pooling_dtype": "native",
-  "storage_dtype": "float16"
-}

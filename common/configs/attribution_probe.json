@@ -1,0 +1,106 @@
+{
+  "analysis": {
+    "variants": [
+      "Ma",
+      "H1"
+    ],
+    "indices": {
+      "phrase": [
+        0,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "answer": [
+        12,
+        32
+      ]
+    },
+    "probe": {
+      "components": 24,
+      "l2": 1.0,
+      "iterations": 25,
+      "epsilon": 1e-06,
+      "standard_clip": null,
+      "logit_clip": null,
+      "nan_to_num": false,
+      "aggregation": "pooled",
+      "folds": 5,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    }
+  },
+  "extraction": {
+    "variants": [
+      "Ma",
+      "H1",
+      "Oa",
+      "Pg",
+      "Ua"
+    ],
+    "pooling_dtype": "native",
+    "storage_dtype": "float16"
+  },
+  "validate": 0,
+  "holdouts": {
+    "variants": [
+      "Ma",
+      "H1"
+    ],
+    "indices": {
+      "phrase": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        16,
+        20,
+        24,
+        28,
+        32
+      ],
+      "answer": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        16,
+        20,
+        24,
+        28,
+        32
+      ]
+    },
+    "probe": {
+      "components": 24,
+      "l2": 1.0,
+      "iterations": 25,
+      "epsilon": 1e-06,
+      "standard_clip": 20,
+      "logit_clip": 30,
+      "nan_to_num": false,
+      "aggregation": "pooled",
+      "folds": 5,
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    }
+  }
+}

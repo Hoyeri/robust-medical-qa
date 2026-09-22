@@ -5,11 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "robust-medical-qa"
 version = "0.1.0"
-requires-python = ">=3.9"
-dependencies = ["numpy>=2.0,<3"]
+requires-python = ">=3.10"
+dependencies = ["numpy>=2.0,<3", "PyYAML>=6", "huggingface-hub>=0.34,<2"]
 
 [project.optional-dependencies]
 inference = ["torch>=2.2", "transformers==4.57.3"]
 
 [tool.setuptools.packages.find]
-include = ["robust_medical_qa*", "experiments*"]
+include = ["common*", "experiments*"]
+
+exclude = ["common.vendor*", "common.tests*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+common = ["prompt.json", "attribution_data.jsonl", "configs/*.json", "vendor/lsld-v1.0.0-medqa/**/*.py", "vendor/lsld-v1.0.0-medqa/README.md"]
+"common.model_eval" = ["models.json"]
