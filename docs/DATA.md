@@ -2,7 +2,7 @@
 
 ## Attention sample
 
-The attention analysis uses Bystander distractors with known source token positions. The original exploratory pool had 304 questions, of which 302 supported fixed-prefix replay. An outcome-independent SHA-256 ordering selected 96 for rationale-and-answer generation. The same 96 were evaluated in five conditions, producing 480 outcome records. [Attention blocking](01_attention_blocking.md) describes the controls and selection.
+The attention analysis uses Bystander distractors from our unreleased, hardened version of MedDistractQA (internal name: MedDistractQA-Hard), with known source token positions. The original exploratory pool had 304 questions, of which 302 supported fixed-prefix replay. An outcome-independent SHA-256 ordering selected 96 for rationale-and-answer generation. The same 96 were evaluated in five conditions, producing 480 outcome records. [Attention blocking](01_attention_blocking.md) describes the controls and selection.
 
 ## Attribution sample
 

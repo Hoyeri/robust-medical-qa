@@ -1,5 +1,7 @@
 # Robust Medical QA
 
+We use an unreleased, hardened version of MedDistractQA, internally referred to as MedDistractQA-Hard, with Bystander as the primary distractor type. Separate MedQA-based patient/third-party finding pairs are used for attribution probing and transmission analysis.
+
 ## Analyses
 
 These analyses ask whether blocking a known distractor changes generated answers, whether the model represents patient/third-party attribution, and whether that attribution remains decodable in attention contributions. Attention blocking uses a separate sample from the paired attribution analyses.

@@ -16,7 +16,7 @@ The clinical control was selected by an ID hash from the original question's non
 
 ## Sample selection
 
-The source pool contained 304 Bystander exploratory questions; 302 supported the existing fixed-prefix evaluation. We ranked those IDs by SHA-256 with a fixed salt and selected the first 96, independently of model outcomes. The exact historical salt and selection function are preserved in [the selection code](../reference/attention/generation_routes.py).
+The source pool contained 304 Bystander exploratory questions from our unreleased, hardened version of MedDistractQA (internal name: MedDistractQA-Hard); 302 supported the existing fixed-prefix evaluation. We ranked those IDs by SHA-256 with a fixed salt and selected the first 96, independently of model outcomes. The exact historical salt and selection function are preserved in [the selection code](../reference/attention/generation_routes.py).
 
 The sample size was set within the experiment's time budget. Baseline and the two distractor-blocking conditions generated 288 responses; the two clinical-control conditions generated 192 responses on the same questions. Three clinical-control baseline smoke runs were recorded separately. The baseline/distractor generation loop took approximately 35.4 minutes.
 
