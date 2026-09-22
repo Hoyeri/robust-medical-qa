@@ -1,0 +1,46 @@
+{
+  "n_independent_questions": 96,
+  "rows": 480,
+  "conditions": {
+    "distractor_all_source_cut": {
+      "n": 96,
+      "correct": 73,
+      "target": 11,
+      "invalid": 1,
+      "gain": 36,
+      "loss": 4
+    },
+    "baseline": {
+      "n": 96,
+      "correct": 41,
+      "target": 47,
+      "invalid": 0,
+      "gain": 0,
+      "loss": 0
+    },
+    "distractor_option_cut": {
+      "n": 96,
+      "correct": 55,
+      "target": 32,
+      "invalid": 0,
+      "gain": 17,
+      "loss": 3
+    },
+    "clinical_all_source_cut": {
+      "n": 96,
+      "correct": 33,
+      "target": 49,
+      "invalid": 1,
+      "gain": 9,
+      "loss": 17
+    },
+    "clinical_option_cut": {
+      "n": 96,
+      "correct": 44,
+      "target": 44,
+      "invalid": 1,
+      "gain": 7,
+      "loss": 4
+    }
+  }
+}

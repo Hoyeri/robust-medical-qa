@@ -1,0 +1,2 @@
+# CPU probe recheck was run locally with this version. No GPU inference dependencies implied.
+numpy==2.0.2
