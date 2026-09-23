@@ -39,6 +39,12 @@ class SyntheticBackend:
                     finish_reason='stop',error=None,raw='fixture',tokens=[])
 
 
+class RejectingBackend(SyntheticBackend):
+    def judge(self,prompt):
+        return dict(parsed=dict(primary_evoked_option='NONE',evoked_options=[],relation_type='NONE',strength='none'),
+                    finish_reason='stop',error=None,raw='fixture',tokens=[])
+
+
 class PipelineTests(unittest.TestCase):
     def test_source_validation_before_generation(self):
         source = dict(question='Patient arrived. What diagnosis?', options=dict(A='gold', B='b', C='c', D='d'), answer_idx='A')
@@ -94,6 +100,48 @@ class PipelineTests(unittest.TestCase):
                          {k:v for k,v in b['policy'].items() if k!='namespace'})
         self.assertEqual(a['policy']['extra_rounds'],2)
         self.assertEqual(a['policy']['slots'],8)
+        self.assertEqual(a['fallback_mode'],'none')
+
+    def test_fixed_fallback_builds_full_coverage_v2_for_both_families(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            source=dict(idx=4,source_id='s4',question='Patient arrived. What diagnosis?',
+                        options=dict(A='gold',B='topic_B',C='topic_C',D='topic_D'),answer_idx='A')
+            jsonl(root/'input.jsonl',[source])
+            for kind in ('bystander','nonliteral'):
+                args=SimpleNamespace(input=root/'input.jsonl',split='internal',type=kind,retry_rounds=2,
+                                     fallback_mode='fixed-template',output=root/kind,resume=False)
+                def process(command,**kwargs):
+                    if '--worker' in command:
+                        state=Path(command[-1])
+                        generate_pool(read(state/'sources.json'),read(state/'config.json'),state,RejectingBackend())
+                    else:
+                        arg=lambda flag:Path(command[command.index(flag)+1])
+                        records=[]
+                        for req in read_jsonl(arg('--requests')):
+                            target=req['intended_target'] or 'A'
+                            scores={c:-4.0 for c in 'ABCD'};scores[target]=-1.0
+                            records.append(dict(req,status='ok',model_revision=DEFAULT_REVISION,
+                                                option_logprobs=scores,top1=target))
+                        jsonl(arg('--output'),records);atomic(arg('--manifest'),dict(status='complete'))
+                    return SimpleNamespace(returncode=0)
+                with patch('pipeline.build_dataset.subprocess.run',side_effect=process),redirect_stdout(io.StringIO()):
+                    build(args)
+                dataset=Path(args.output)/hard_dataset_filename(kind,full_coverage=True)
+                pairs=read_jsonl(dataset)
+                self.assertEqual(len(pairs),1)
+                self.assertTrue(pairs[0]['construction_fallback_used'])
+                self.assertEqual(pairs[0]['construction_candidate_origin'],'fixed_template_fallback')
+                self.assertFalse(pairs[0]['gate_validated'])
+                self.assertTrue(pairs[0]['random_same_target_control_collapsed'])
+                summary=read(Path(args.output)/'summary.json')
+                self.assertEqual(summary['accepted_candidates'],0)
+                self.assertEqual(summary['fallback_sources'],1)
+                self.assertEqual(summary['fallback_candidates'],3)
+                self.assertEqual(summary['source_coverage_n'],1)
+                self.assertEqual(summary['source_coverage_rate'],1.0)
+                self.assertTrue(summary['full_coverage'])
+                self.assertEqual(hard_dataset_path(args.output),dataset)
 
     def test_worker_entrypoint_replays_completed_candidates(self):
         source=dict(idx=4,source_id='s4',question='Patient arrived. What diagnosis?',

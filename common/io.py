@@ -46,9 +46,14 @@ def new_output_dir(path):
     return path
 
 
-def hard_dataset_filename(family):
+def hard_dataset_filename(family, *, full_coverage=False):
     require(family in ('bystander', 'nonliteral'), 'Unknown Hard dataset type')
-    return f'meddistractqa-hard-{family}.jsonl'
+    suffix = '-fullcoverage-v2' if full_coverage else ''
+    return f'meddistractqa-hard-{family}{suffix}.jsonl'
+
+
+def hard_dataset_filenames(family):
+    return [hard_dataset_filename(family), hard_dataset_filename(family, full_coverage=True)]
 
 
 def hard_dataset_path(path=None, *, family=None):
@@ -58,11 +63,11 @@ def hard_dataset_path(path=None, *, family=None):
         candidates = []
         for kind in families:
             directory = HARD_OUTPUT_ROOT / kind
-            dataset = directory / hard_dataset_filename(kind)
-            if not dataset.is_file():
-                dataset = directory / 'pairs.jsonl'
-            if dataset.is_file():
-                candidates.append(dataset)
+            family_candidates = [directory / name for name in hard_dataset_filenames(kind)]
+            family_candidates = [dataset for dataset in family_candidates if dataset.is_file()]
+            if not family_candidates and (directory / 'pairs.jsonl').is_file():
+                family_candidates = [directory / 'pairs.jsonl']
+            candidates.extend(family_candidates)
         searched = ', '.join(str(HARD_OUTPUT_ROOT / kind) for kind in families)
         require(bool(candidates), f'No Hard dataset found in {searched}. '
                 'Generate it with pipeline/build_dataset.py or provide --input PATH.')
@@ -71,7 +76,8 @@ def hard_dataset_path(path=None, *, family=None):
         return candidates[0]
     path = Path(path)
     if path.is_dir():
-        candidates = [path / hard_dataset_filename(f) for f in ('bystander', 'nonliteral')]
+        candidates = [path / name for family in ('bystander', 'nonliteral')
+                      for name in hard_dataset_filenames(family)]
         candidates = [p for p in candidates if p.is_file()]
         if not candidates and (path / 'pairs.jsonl').is_file():
             candidates = [path / 'pairs.jsonl']

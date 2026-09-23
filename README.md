@@ -26,6 +26,7 @@ Load MedQA from [Hugging Face](https://huggingface.co/datasets/GBaker/MedQA-USML
 ```bash
 python pipeline/build_dataset.py --type bystander --split test --output outputs/bystander
 python pipeline/build_dataset.py --type nonliteral --split test --output outputs/nonliteral
+python pipeline/build_dataset.py --type bystander --split dev --fallback-mode fixed-template --output outputs/bystander-fullcoverage-v2
 ```
 
 | Argument | Required/default | Description |
@@ -34,12 +35,17 @@ python pipeline/build_dataset.py --type nonliteral --split test --output outputs
 | `--type` | Required | Distractor family to generate: `bystander` / `nonliteral` |
 | `--split` | Automatic: `test` without `--input` / `internal` with `--input` | Without `--input`, select the HF split: `train` / `dev` / `test`. With `--input`, assign one of those labels or `internal` to the local data |
 | `--retry-rounds` | `2` | Additional generation rounds for rejected candidate slots: `0` / `1` / `2` |
+| `--fallback-mode` | `none` | `fixed-template` adds three explicitly labeled, non-gate-validated candidates only when a source has no gate-valid candidate after the retry budget |
 | `--output` | Required | Output directory |
 | `--generation-python` | Current Python | Python executable in the vLLM environment used for candidate generation/validation |
 | `--scoring-python` | Current Python | Python executable in the Transformers/MXFP4 environment used for GPT-OSS scoring |
 | `--resume` | Off | Resume saved work with the same inputs and settings |
 
 The HF test input preserves the source IDs and iteration order of the existing construction run. An optional local input JSONL uses `idx`, `source_id`, `question`, `options` (A–D), and `answer_idx`. Generated data is saved as `meddistractqa-hard-bystander.jsonl` or `meddistractqa-hard-nonliteral.jsonl`, with the original MedQA question and its Hard version stored together. The pipeline also saves `views.jsonl`, `selection.jsonl`, and `summary.json`.
+
+`--fallback-mode fixed-template` is a separate full-coverage V2 policy. It does not replace individual rejected slots. After all generation and retries finish, it acts only on a source with zero gate-valid candidates and adds one deterministic candidate for each wrong option. Bystander uses a quoted clinical topic repeated by a neighbor's parrot; Nonliteral uses the quoted topic as a nickname for the patient's current mood. These candidates bypass the option-association gate by design and are recorded as `candidate_origin=fixed_template_fallback`, `gate_validated=false`, and `must_not_be_used_for_training=true`. The selected pair retains the fallback trigger and template version. Reports should keep generated-only and fallback strata separate because the fallback repeats answer-option text directly.
+
+Full-coverage outputs are named `meddistractqa-hard-bystander-fullcoverage-v2.jsonl` or `meddistractqa-hard-nonliteral-fullcoverage-v2.jsonl`. The run fails unless every input source is included. `summary.json` reports generated coverage, fallback source/candidate counts, final coverage, and the full-coverage check. For a fallback source, the only same-target fallback candidate is also the Hard candidate, so `random_same_target_control_collapsed=true` explicitly marks that the control is not distinct.
 
 ## Model evaluation
 

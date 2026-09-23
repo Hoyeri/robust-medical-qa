@@ -106,6 +106,8 @@ class CoreTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Expected one Hard dataset'):
                 hard_dataset_path(root)
             self.assertEqual(hard_dataset_path(bystander), bystander)
+            self.assertEqual(hard_dataset_filename('bystander',full_coverage=True),
+                             'meddistractqa-hard-bystander-fullcoverage-v2.jsonl')
 
     def test_included_attribution_data_has_original_comparisons(self):
         items = read_jsonl(ROOT/'common/attribution_data.jsonl')

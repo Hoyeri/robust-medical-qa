@@ -42,15 +42,18 @@ def sources_from(rows, split):
     return result
 
 
-def settings(kind, split, retries=2):
+def settings(kind, split, retries=2, fallback_mode='none'):
     if kind not in ('bystander', 'nonliteral'): raise ValueError('Unknown distractor type')
+    if fallback_mode not in ('none', 'fixed-template'): raise ValueError('Unknown fallback mode')
     prefix = 'nl' if kind == 'nonliteral' else 'bs'
+    dataset_version = 'v2' if fallback_mode == 'fixed-template' else 'v1'
     return dict(kind=kind, split=split, policy=asdict(RetryPolicy(extra_rounds=retries, namespace=prefix+'-cue-retry-v2')),
         generation_template=NONLITERAL_PROMPT if kind == 'nonliteral' else prompt_gen_beta_confounder,
         judge_template=JUDGE_PROMPT.replace('bystander',kind).replace('Bystander',kind.title()),
         model=DEFAULT_MODEL, revision=DEFAULT_REVISION, chat_date='2026-09-12',
-        namespace=f'{prefix}-{split}-v1', random_salt=prefix+'-random-valid-v1',
-        same_target_salt=prefix+'-random-same-target-v1')
+        namespace=f'{prefix}-{split}-{dataset_version}', random_salt=prefix+'-random-valid-v1',
+        same_target_salt=prefix+'-random-same-target-v1', fallback_mode=fallback_mode,
+        fallback_scope='source_without_gate_valid_candidates')
 
 
 def generate_pool(sources, config, directory, backend):
@@ -66,7 +69,8 @@ def generate_pool(sources, config, directory, backend):
                 target_gate_result, dict(model=config['model'], revision=config['revision'], chat_date=config['chat_date'])))
         print(f"Candidates: {i+1}/{len(sources)}", flush=True)
     pool = build_scoring_pool(sources, results, insert_before_final_sentence, sample_by_hash,
-                             condition=config['kind'], random_salt=config['random_salt'])
+                             condition=config['kind'], random_salt=config['random_salt'],
+                             fallback_mode=config['fallback_mode'])
     jsonl(directory/'target_results.jsonl', results)
     atomic(directory/'pool.json', pool)
     jsonl(directory/'score_requests.jsonl', pool['score_requests'])
@@ -81,14 +85,27 @@ def finish(sources, config, state, output):
     files = []
     jsonl(state/'selection_audit.jsonl',audit)
     selection=[{k:v for k,v in row.items() if not k.endswith('_hash')} for row in audit]
-    for name, rows in [(hard_dataset_filename(config['kind']),pairs), ('views.jsonl',views), ('selection.jsonl',selection)]:
+    full_coverage = config['fallback_mode'] == 'fixed-template'
+    dataset_name = hard_dataset_filename(config['kind'], full_coverage=full_coverage)
+    for name, rows in [(dataset_name,pairs), ('views.jsonl',views), ('selection.jsonl',selection)]:
         jsonl(output/name,rows); files.append(output/name)
-    atomic(output/'summary.json', dict(type=config['kind'], sources=len(sources), included=len(pairs),
+    summary = dict(type=config['kind'], sources=len(sources), included=len(pairs),
         excluded=len(sources)-len(pairs), extra_retry_rounds=config['policy']['extra_rounds'],
         generated_candidates=sum(r['generated_n'] for r in read_jsonl(state/'target_results.jsonl')),
-        accepted_candidates=len(pool['valid_candidates'])))
+        accepted_candidates=sum(c.get('candidate_origin') == 'generated_gate_valid' for c in pool['valid_candidates']))
+    if full_coverage:
+        summary.update(selection_eligible_candidates=len(pool['valid_candidates']),
+            generated_source_coverage_n=pool['generated_source_coverage_n'],
+            generated_source_coverage_rate=pool['generated_source_coverage_n']/len(sources),
+            fallback_mode=config['fallback_mode'], fallback_sources=pool['fallback_source_n'],
+            fallback_candidates=pool['fallback_candidate_n'], source_coverage_n=pool['source_coverage_n'],
+            source_coverage_rate=pool['source_coverage_n']/len(sources),
+            full_coverage=len(pairs) == len(sources))
+    atomic(output/'summary.json', summary)
     files.append(output/'summary.json')
     if not pairs: raise ValueError('No eligible sources; selection audit saved')
+    if full_coverage and len(pairs) != len(sources):
+        raise ValueError('Fixed-template fallback did not achieve full source coverage')
     return files
 
 
@@ -96,7 +113,7 @@ def run(args):
     input_path = Path(args.input) if args.input else None
     split = args.split or ('internal' if input_path else 'test')
     source = None if input_path else medqa_source(split)
-    config = settings(args.type,split,args.retry_rounds)
+    config = settings(args.type,split,args.retry_rounds,getattr(args,'fallback_mode','none'))
     binding = dict(input=sha(input_path) if input_path else source, config=config)
     with Run(args.output, binding, args.resume) as run:
         state, output = run.state, run.output
@@ -140,7 +157,8 @@ def run(args):
             return [state/'repeat_requests.jsonl',state/'repeat_scores.jsonl',state/'repeat_manifest.json']
         run.stage('repeat_scoring',repeat_stage)
         run.stage('selection',lambda:finish(sources,config,state,output))
-        print(f"Dataset complete: {read(output/'summary.json')['included']} questions -> {output/hard_dataset_filename(args.type)}")
+        dataset_name=hard_dataset_filename(args.type,full_coverage=config['fallback_mode']=='fixed-template')
+        print(f"Dataset complete: {read(output/'summary.json')['included']} questions -> {output/dataset_name}")
 
 
 def main():
@@ -150,6 +168,8 @@ def main():
     parser.add_argument('--split',choices=['train','dev','internal','test'],
                         help='HF split (default: test), or a local input label (default: internal; internal requires --input)')
     parser.add_argument('--retry-rounds',type=int,choices=[0,1,2],default=2)
+    parser.add_argument('--fallback-mode',choices=['none','fixed-template'],default='none',
+                        help='After the retry budget, fill only sources with zero gate-valid candidates using explicit fixed templates')
     parser.add_argument('--output',required=True)
     parser.add_argument('--resume',action='store_true')
     parser.add_argument('--generation-python',default=sys.executable,help='Python with vLLM')

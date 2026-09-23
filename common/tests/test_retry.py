@@ -10,9 +10,12 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from common.checkpoints import sample_by_hash, sha
 from common.hard_data.judge import target_gate_result as gate, JUDGE_PROMPT, parse_judgment
-from common.hard_data.retry import RetryPolicy, round_seed, run_target, classify_failure, build_scoring_pool
+from common.hard_data.retry import (RetryPolicy, round_seed, run_target, classify_failure,
+                                    build_scoring_pool, fixed_fallback_candidates)
 from common.hard_data.runtime import insert_before_final_sentence
 from common.hard_data.selection import decide_candidate_with_residual_policy
+from common.hard_data.dataset import select_dataset, paired_rows
+from common.hard_data.scoring import DEFAULT_REVISION
 
 SOURCE = dict(source_id='unit-1', idx=1, question='A person arrived. Which answer is best?',
               options=dict(A='Gold', B='Target', C='Other', D='Other two'), answer_idx='A')
@@ -144,7 +147,75 @@ class RetryTests(unittest.TestCase):
         with self.assertRaises(ValueError): build_scoring_pool([SOURCE],[r,r],insert_before_final_sentence,sample_by_hash)
     def test_empty_pool_preserves_clean(self):
         r,b=self.run_case([['cue']],RetryPolicy(slots=1,extra_rounds=0)); pool=build_scoring_pool([SOURCE],[r],insert_before_final_sentence,sample_by_hash)
-        self.assertEqual(pool['source_coverage_n'],0); self.assertEqual(len(pool['score_requests']),1)
+        self.assertEqual(pool['source_coverage_n'],0); self.assertEqual(pool['generated_source_coverage_n'],0)
+        self.assertEqual(len(pool['score_requests']),1)
+    def test_fixed_fallback_fills_only_empty_sources(self):
+        r,b=self.run_case([['cue']],RetryPolicy(slots=1,extra_rounds=0))
+        pool=build_scoring_pool([SOURCE],[r],insert_before_final_sentence,sample_by_hash,
+                                condition='bystander',fallback_mode='fixed-template')
+        self.assertEqual(pool['generated_source_coverage_n'],0)
+        self.assertEqual(pool['source_coverage_n'],1)
+        self.assertEqual(pool['fallback_source_ids'],['unit-1'])
+        self.assertEqual(pool['fallback_candidate_n'],3)
+        self.assertEqual(len(pool['score_requests']),4)
+        candidates=pool['valid_candidates']
+        self.assertEqual({c['intended_target'] for c in candidates},{'B','C','D'})
+        self.assertTrue(all(c['candidate_origin']=='fixed_template_fallback' for c in candidates))
+        self.assertTrue(all(not c['gate_validated'] for c in candidates))
+        self.assertIn('“Target”',next(c['sentence'] for c in candidates if c['intended_target']=='B'))
+
+        accepted,_=self.run_case([['accepted']],RetryPolicy(slots=1,extra_rounds=0))
+        generated=build_scoring_pool([SOURCE],[accepted],insert_before_final_sentence,sample_by_hash,
+                                     condition='bystander',fallback_mode='fixed-template')
+        self.assertEqual(generated['fallback_source_n'],0)
+        self.assertEqual(len(generated['valid_candidates']),1)
+    def test_default_mode_preserves_v1_output_schema(self):
+        accepted,_=self.run_case([['accepted']],RetryPolicy(slots=1,extra_rounds=0))
+        pool=build_scoring_pool([SOURCE],[accepted],insert_before_final_sentence,sample_by_hash,
+                                condition='bystander')
+        scores=[]
+        for request in pool['score_requests']:
+            target=request['intended_target'] or 'A'
+            values={choice:-4.0 for choice in 'ABCD'};values[target]=-1.0
+            scores.append(dict(request,status='ok',model_revision=DEFAULT_REVISION,
+                               option_logprobs=values,top1=target))
+        views,audits=select_dataset([SOURCE],pool,scores,namespace='test-v1')
+        pair=paired_rows([SOURCE],views,audits)[0]
+        self.assertNotIn('construction_candidate_origin',pair)
+        self.assertNotIn('construction_fallback_used',pair)
+        self.assertNotIn('gate_validated',pair)
+    def test_fixed_fallback_templates_preserve_provenance(self):
+        for kind,phrase,version in [('bystander','neighbor\'s parrot','bystander_parrot_v1'),
+                                    ('nonliteral','current mood','nonliteral_mood_v1')]:
+            candidates=fixed_fallback_candidates(SOURCE,kind)
+            self.assertEqual(len(candidates),3)
+            self.assertTrue(all(phrase in c['sentence'] for c in candidates))
+            self.assertTrue(all(c['fallback_template_version']==version for c in candidates))
+            self.assertTrue(all(c['fallback_trigger']=='no_gate_valid_candidate_after_retry_budget' for c in candidates))
+    def test_fixed_fallback_survives_selection_with_explicit_labels(self):
+        rejected,_=self.run_case([['cue']],RetryPolicy(slots=1,extra_rounds=0))
+        pool=build_scoring_pool([SOURCE],[rejected],insert_before_final_sentence,sample_by_hash,
+                                condition='nonliteral',fallback_mode='fixed-template')
+        scores=[]
+        for request in pool['score_requests']:
+            target=request['intended_target'] or 'A'
+            values={choice:-4.0 for choice in 'ABCD'};values[target]=-1.0
+            scores.append(dict(request,status='ok',model_revision=DEFAULT_REVISION,
+                               option_logprobs=values,top1=target))
+        views,audits=select_dataset([SOURCE],pool,scores,namespace='test-v2')
+        pairs=paired_rows([SOURCE],views,audits)
+        self.assertEqual(len(pairs),1)
+        pair=pairs[0]
+        self.assertEqual(pair['construction_candidate_origin'],'fixed_template_fallback')
+        self.assertTrue(pair['construction_fallback_used'])
+        self.assertFalse(pair['gate_validated'])
+        self.assertTrue(pair['random_same_target_control_collapsed'])
+        self.assertEqual(pair['fallback_template_version'],'nonliteral_mood_v1')
+        self.assertTrue(pair['must_not_be_used_for_training'])
+    def test_unknown_fallback_mode_rejected(self):
+        with self.assertRaisesRegex(ValueError,'fallback mode'):
+            build_scoring_pool([SOURCE],[],insert_before_final_sentence,sample_by_hash,
+                               fallback_mode='unknown')
     def test_score_not_an_input(self):
         import inspect
         self.assertNotIn('score',inspect.signature(run_target).parameters)

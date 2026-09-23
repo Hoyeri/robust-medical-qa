@@ -10,6 +10,7 @@ from pathlib import Path
 import fcntl
 
 from common.checkpoints import Checkpoints, sha
+from common.hard_data.prompts import render_fixed_fallback
 
 
 @dataclass(frozen=True)
@@ -127,7 +128,9 @@ def run_target(source, target, generation_template, judge_template, policy,
                 status = decision['category']
                 if status == 'accepted':
                     accepted.append(dict(can, generation_valid=True, judgments=judgments,
-                                         target_gate_label=decision['gate']['label']))
+                                         target_gate_label=decision['gate']['label'],
+                                         candidate_origin='generated_gate_valid',
+                                         gate_validated=True, selection_eligible=True))
                 elif decision['retryable'] and round_index < policy.extra_rounds:
                     again.append(slot)
                 elif decision['retryable']:
@@ -149,8 +152,29 @@ def run_target(source, target, generation_template, judge_template, policy,
         lock.close()
 
 
-def build_scoring_pool(sources, results, insert, sample, condition="nonliteral", random_salt="nl-random-valid-v1"):
+def fixed_fallback_candidates(source, condition):
+    """Create one explicit, non-gate-validated fallback for each wrong option."""
+    candidates = []
+    for order, target in enumerate(choice for choice in 'ABCD' if choice != source['answer_idx']):
+        sentence, version = render_fixed_fallback(condition, source['options'][target])
+        candidate_id = f'fixed-template-fallback-v1:{condition}:{source["source_id"]}:{target}'
+        candidates.append(dict(candidate_id=candidate_id, source_id=source['source_id'],
+            source_idx=source['idx'], intended_target=target, candidate_rank=10000 + order,
+            sentence=sentence, candidate_text_sha256=__import__('hashlib').sha256(sentence.encode()).hexdigest(),
+            candidate_origin='fixed_template_fallback', generation_valid=False,
+            gate_validated=False, selection_eligible=True, judgments={},
+            target_gate_label='FIXED_TEMPLATE_FALLBACK', target_set=[target],
+            target_set_source='template_binding', fallback_template_version=version,
+            fallback_trigger='no_gate_valid_candidate_after_retry_budget',
+            finish_reason='deterministic_template'))
+    return candidates
+
+
+def build_scoring_pool(sources, results, insert, sample, condition="nonliteral",
+                       random_salt="nl-random-valid-v1", fallback_mode='none'):
     """The SAME frozen accepted pool feeds score requests and Random/Hard."""
+    if fallback_mode not in ('none', 'fixed-template'):
+        raise ValueError('Unknown fallback mode')
     index = {r['source_id']: r for r in sources}
     if len(index) != len(sources):
         raise ValueError('Duplicate source IDs')
@@ -163,7 +187,9 @@ def build_scoring_pool(sources, results, insert, sample, condition="nonliteral",
                     source_id=row['source_id'], source_idx=row['idx'], role='candidate' if can else 'clean',
                     condition=condition if can else 'clean', question=question, options=row['options'],
                     gold=row['answer_idx'], candidate_id=can['candidate_id'] if can else None,
-                    intended_target=can['intended_target'] if can else None)
+                    intended_target=can['intended_target'] if can else None,
+                    candidate_origin=can.get('candidate_origin') if can else None,
+                    gate_validated=can.get('gate_validated') if can else None)
     for source in sources:
         requests.append(request(source, source['question']))
     for result in results:
@@ -172,7 +198,16 @@ def build_scoring_pool(sources, results, insert, sample, condition="nonliteral",
             if can['source_id'] != row['source_id'] or can['intended_target'] != result['target']:
                 raise ValueError('Candidate provenance mismatch')
             valid.append(can)
-            requests.append(request(row, insert(row['question'], can['sentence']), can))
+    generated_source_ids = {can['source_id'] for can in valid}
+    fallback_source_ids = []
+    if fallback_mode == 'fixed-template':
+        for source in sources:
+            if source['source_id'] not in generated_source_ids:
+                fallback_source_ids.append(source['source_id'])
+                valid.extend(fixed_fallback_candidates(source, condition))
+    for can in valid:
+        row = index[can['source_id']]
+        requests.append(request(row, insert(row['question'], can['sentence']), can))
     if len({r['candidate_id'] for r in valid}) != len(valid):
         raise ValueError('Duplicate accepted candidate IDs')
     for sid in index:
@@ -180,4 +215,8 @@ def build_scoring_pool(sources, results, insert, sample, condition="nonliteral",
         if pool:
             random[sid] = sample(pool, sid, random_salt)['candidate_id']
     return dict(valid_candidates=valid, score_requests=requests, random_selection=random,
-                source_coverage_n=len(random), source_n=len(sources))
+                generated_source_coverage_n=len(generated_source_ids),
+                fallback_source_ids=fallback_source_ids,
+                fallback_source_n=len(fallback_source_ids),
+                fallback_candidate_n=sum(c.get('candidate_origin') == 'fixed_template_fallback' for c in valid),
+                source_coverage_n=len(random), source_n=len(sources), fallback_mode=fallback_mode)
